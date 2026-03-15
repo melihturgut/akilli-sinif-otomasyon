@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+.venv/
+venv/
+
+# Veritabani ve calistirma verileri (cloud'da fresh basliyor)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+smartclass.db
+
+# Cookies ve gecici
+cookies.txt
+c.txt
+c2.txt
+
+# IDE / Tool
+.vscode/
+.idea/
+.claude/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cloudflared
+cloudflared*
+
+# Test ciktilari
+test_*.pdf
+test_*.xlsx
