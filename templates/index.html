@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Akıllı Sınıf Otomasyonu</title>
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#0a2340" />
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="/static/icons/favicon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Akıllı Sınıf" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:       #080c14;
+      --card-bg:  #111827;
+      --border:   #1f2a40;
+      --primary:  #38bdf8;
+      --success:  #34d399;
+      --danger:   #f87171;
+      --warning:  #fbbf24;
+      --muted:    #6b7280;
+      --text:     #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .app-header {
+      background: linear-gradient(135deg, #0c4a6e 0%, #0a2340 100%);
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid #1e3a5f;
+    }
+    .app-header h1 { font-size: 1.1rem; font-weight: 700; margin: 0; letter-spacing: .5px; }
+    .app-header p  { font-size: .7rem; opacity: .65; margin: 3px 0 0; }
+
+    /* ── Nav ── */
+    .app-nav { display: flex; gap: 6px; padding: 10px 12px; background: #0a0f1a; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .app-nav a { flex: 1; text-align: center; white-space: nowrap; text-decoration: none; color: var(--muted); font-size: .72rem; font-weight: 600; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border); }
+    .app-nav a.active { color: var(--primary); border-color: rgba(56,189,248,.4); background: rgba(56,189,248,.08); }
+
+    /* ── Card base ── */
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    /* ── Sensor stats ── */
+    .stat-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 6px;
+      text-align: center;
+    }
+    .stat-box .ico  { font-size: 1.3rem; line-height: 1; }
+    .stat-box .val  { font-size: 1.35rem; font-weight: 700; color: var(--primary); line-height: 1.2; }
+    .stat-box .lbl  { font-size: .62rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+    /* ── System badges ── */
+    .sys-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: .78rem;
+      font-weight: 600;
+      border: 1px solid;
+    }
+    .b-on  { color: var(--success); border-color: var(--success); background: rgba(52,211,153,.1); }
+    .b-off { color: var(--muted);   border-color: var(--border);  background: rgba(255,255,255,.03); }
+    .b-dim { color: var(--warning); border-color: var(--warning); background: rgba(251,191,36,.1); }
+
+    /* ── KPI cards ── */
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 10px;
+      text-align: center;
+    }
+    .kpi-card .kv { font-size: 1.6rem; font-weight: 700; line-height: 1.1; }
+    .kpi-card .kl { font-size: .65rem; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+    .kpi-card .ks { font-size: .75rem; font-weight: 600; margin-top: 4px; }
+
+    /* ── Progress ── */
+    .prog-wrap { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .prog-fill  { height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); border-radius: 3px; transition: width .4s; }
+
+    /* ── Buttons ── */
+    .btn-sim { border-radius: 9px; font-weight: 600; font-size: .82rem; padding: 9px 0; border: none; }
+    .btn-go   { background: var(--success); color: #021e14; }
+    .btn-stop { background: var(--danger);  color: #2e0707; }
+    .btn-rst  { background: #1f2937; color: var(--text); border: 1px solid var(--border); }
+    .btn-sim:disabled { opacity: .4; pointer-events: none; }
+
+    /* ── Speed badge ── */
+    .speed-chip {
+      background: rgba(56,189,248,.1);
+      color: var(--primary);
+      border: 1px solid rgba(56,189,248,.3);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: .73rem;
+      font-weight: 600;
+    }
+
+    /* ── Chart wrapper ── */
+    .chart-wrap { position: relative; height: 190px; }
+    @media (min-width: 576px) { .chart-wrap { height: 230px; } }
+
+    /* ── Timeline dot indicator ── */
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-on  { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .dot-off { background: var(--muted); }
+
+    /* ── Table ── */
+    table { color: var(--text) !important; }
+    table th, table td { border-color: var(--border) !important; padding: 5px 6px !important; }
+    table thead th { font-weight: 600; font-size: .65rem; text-transform: uppercase; }
+
+    /* ── Footer ── */
+    .footer { font-size: .62rem; color: var(--muted); text-align: center; padding: 12px 0 20px; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #2a3a50; border-radius: 2px; }
+  </style>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<div class="app-header">
+  <h1><i class="bi bi-building-check me-1"></i>Akıllı Sınıf Otomasyonu</h1>
+  <p>MDB308 Çok Disiplinli Takım Projesi &mdash; IoT Simülasyonu</p>
+</div>
+
+<nav class="app-nav">
+  <a href="/" class="active">📊 Simülasyon</a>
+  <a href="/hoca">👨‍🏫 Hoca</a>
+  <a href="/admin">⚙️ Yönetici</a>
+  <a href="/analitik">🔥 Analitik</a>
+  <a href="/panel">🚪 Canlı Panel</a>
+  <a href="/qr">📱 QR Kodlar</a>
+</nav>
+
+<div class="container-fluid px-3 py-3" style="max-width:640px">
+
+  <!-- Sim Controls -->
+  <div class="panel mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <span class="fw-bold" style="font-size:.85rem">Simülasyon Kontrolü</span>
+      <span class="speed-chip" id="speed-chip">60× Hız</span>
+    </div>
+
+    <div class="d-flex gap-2 mb-3">
+      <button class="btn btn-sim btn-go  flex-fill" id="btn-start" onclick="startSim()">
+        <i class="bi bi-play-fill"></i> Başlat
+      </button>
+      <button class="btn btn-sim btn-stop flex-fill" id="btn-stop" onclick="stopSim()" disabled>
+        <i class="bi bi-pause-fill"></i> Durdur
+      </button>
+      <button class="btn btn-sim btn-rst  flex-fill" onclick="resetSim()">
+        <i class="bi bi-arrow-counterclockwise"></i> Sıfırla
+      </button>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <span style="font-size:.75rem">Hız: <strong id="speed-val">60</strong>×</span>
+      <span style="font-size:.75rem" class="text-muted">1× yavaş &nbsp;|&nbsp; 300× hızlı</span>
+    </div>
+    <input type="range" class="form-range mb-2" id="speed-slider"
+           min="10" max="300" value="60" oninput="updateSpeed(this.value)" />
+
+    <!-- Progress -->
+    <div class="d-flex justify-content-between mb-1" style="font-size:.73rem">
+      <span id="sim-daytime" class="fw-semibold">Pazartesi 00:00</span>
+      <span id="sim-pct" class="text-muted">%0</span>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill" id="prog-bar" style="width:0%"></div></div>
+  </div>
+
+  <!-- Sensor Row -->
+  <div class="row g-2 mb-3">
+    <div class="col-3">
+      <div class="stat-box">
+        <div class="ico">👥</div>
+        <div class="val" id="s-occ">0</div>
+        <div class="lbl">Kişi</div>
+      </div>
+    </div>
+    <div class="col-3">
+      <div class="stat-box">
+        <div class="ico">🌡️</div>
+        <div class="val" id="s-temp">--</div>
+        <div class="lbl">°C</div>
+      </div>
+    </div>
+    <div class="col-3">
+      <div class="stat-box">
+        <div class="ico">💧</div>
+        <div class="val" id="s-hum">--</div>
+        <div class="lbl">% Nem</div>
+      </div>
+    </div>
+    <div class="col-3">
+      <div class="stat-box">
+        <div class="ico" id="motion-ico">⚫</div>
+        <div class="val" style="font-size:.9rem" id="s-motion">YOK</div>
+        <div class="lbl">Hareket</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Status -->
+  <div class="panel mb-3">
+    <div class="fw-semibold mb-2" style="font-size:.82rem">
+      <i class="bi bi-cpu me-1"></i>Sistem Durumu
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <span class="sys-badge b-off" id="b-light"><i class="bi bi-lightbulb"></i> Aydınlatma: KAPALI</span>
+      <span class="sys-badge b-off" id="b-hvac"><i class="bi bi-thermometer-half"></i> HVAC: KAPALI</span>
+      <span class="sys-badge b-off" id="b-proj"><i class="bi bi-projector"></i> Projektör: KAPALI</span>
+    </div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="row g-2 mb-3">
+    <div class="col-4">
+      <div class="kpi-card">
+        <div class="kv text-success" id="kpi-kwh">0.00</div>
+        <div class="kl">kWh Tasarruf</div>
+        <div class="ks text-warning" id="kpi-pct">%0</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="kpi-card">
+        <div class="kv" style="color:#fde68a" id="kpi-tl">0.00</div>
+        <div class="kl">TL Tasarruf</div>
+        <div class="ks text-muted" style="font-size:.65rem">≈4.5 TL/kWh</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="kpi-card">
+        <div class="kv" style="color:#86efac" id="kpi-co2">0.00</div>
+        <div class="kl">kg CO₂ Azaltım</div>
+        <div class="ks text-muted" style="font-size:.65rem">0.4 kg/kWh</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Energy totals -->
+  <div class="row g-2 mb-3">
+    <div class="col-6">
+      <div class="panel text-center py-3">
+        <div style="font-size:.65rem;color:var(--muted)">OTOMASYONLU</div>
+        <div class="fw-bold" style="font-size:1.3rem;color:var(--success)" id="e-auto">0.00 kWh</div>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="panel text-center py-3">
+        <div style="font-size:.65rem;color:var(--muted)">OTOMASYON YOK</div>
+        <div class="fw-bold" style="font-size:1.3rem;color:var(--danger)" id="e-base">0.00 kWh</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 1: Anlık Güç -->
+  <div class="panel mb-3">
+    <div class="fw-semibold mb-2" style="font-size:.8rem">
+      <i class="bi bi-lightning-charge me-1"></i>Anlık Güç Tüketimi (kW)
+    </div>
+    <div class="chart-wrap"><canvas id="chartPower"></canvas></div>
+  </div>
+
+  <!-- Chart 2: Kümülatif Enerji -->
+  <div class="panel mb-3">
+    <div class="fw-semibold mb-2" style="font-size:.8rem">
+      <i class="bi bi-graph-up me-1"></i>Kümülatif Enerji Tüketimi (kWh)
+    </div>
+    <div class="chart-wrap"><canvas id="chartEnergy"></canvas></div>
+  </div>
+
+  <!-- Chart 3: Doluluk -->
+  <div class="panel mb-3">
+    <div class="fw-semibold mb-2" style="font-size:.8rem">
+      <i class="bi bi-people me-1"></i>Sınıf Doluluk Profili
+    </div>
+    <div class="chart-wrap"><canvas id="chartOcc"></canvas></div>
+  </div>
+
+  <!-- Chart 4: Günlük Tasarruf -->
+  <div class="panel mb-3">
+    <div class="fw-semibold mb-2" style="font-size:.8rem">
+      <i class="bi bi-calendar-week me-1"></i>Günlük Enerji Tasarrufu
+    </div>
+    <div class="chart-wrap"><canvas id="chartDaily"></canvas></div>
+  </div>
+
+  <!-- Daily breakdown table -->
+  <div class="panel mb-3">
+    <div class="fw-semibold mb-2" style="font-size:.8rem">
+      <i class="bi bi-table me-1"></i>Gün Bazında Döküm
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0" style="font-size:.74rem">
+        <thead>
+          <tr style="color:var(--muted)">
+            <th>Gün</th>
+            <th class="text-end">Oto. (kWh)</th>
+            <th class="text-end">Bazhat (kWh)</th>
+            <th class="text-end">Tasarruf</th>
+            <th class="text-end">TL</th>
+          </tr>
+        </thead>
+        <tbody id="daily-tbody"></tbody>
+        <tfoot>
+          <tr class="fw-bold" style="border-top:2px solid var(--border)">
+            <td>TOPLAM</td>
+            <td class="text-end" id="dt-auto">0.00</td>
+            <td class="text-end" id="dt-base">0.00</td>
+            <td class="text-end text-success" id="dt-sav">0.00</td>
+            <td class="text-end" style="color:#fde68a" id="dt-tl">0.00</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    Melih Turgut · Samed Mete Özmen · Serkan Yıldırım · Enes Tunahan Pakelli · Kamil Uzun · İrem Öz<br />
+    Danışman: Raşit Cesur &nbsp;|&nbsp; MDB308
+  </div>
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── Chart defaults ────────────────────────────────────────────
+Chart.defaults.color = '#6b7280';
+Chart.defaults.font.size = 10;
+
+const BASE_OPTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 0 },
+  plugins: {
+    legend: { labels: { color: '#94a3b8', boxWidth: 10, font: { size: 10 } } },
+    tooltip: { mode: 'index', intersect: false }
+  },
+  scales: {
+    x: { ticks: { maxTicksLimit: 6, color: '#4b5563' }, grid: { color: '#1f2a40' } },
+    y: { ticks: { color: '#4b5563' }, grid: { color: '#1f2a40' } }
+  }
+};
+
+const chartPower = new Chart(document.getElementById('chartPower'), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Otomasyonlu', data: [], borderColor: '#34d399', borderWidth: 2,
+        fill: true, backgroundColor: 'rgba(52,211,153,.07)', tension: 0.4, pointRadius: 0 },
+      { label: 'Otomasyon Yok', data: [], borderColor: '#f87171', borderWidth: 2,
+        fill: true, backgroundColor: 'rgba(248,113,113,.07)', tension: 0.4, pointRadius: 0 }
+    ]
+  },
+  options: { ...BASE_OPTS }
+});
+
+const chartEnergy = new Chart(document.getElementById('chartEnergy'), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Otomasyonlu', data: [], borderColor: '#38bdf8', borderWidth: 2,
+        fill: true, backgroundColor: 'rgba(56,189,248,.08)', tension: 0.4, pointRadius: 0 },
+      { label: 'Otomasyon Yok', data: [], borderColor: '#fb923c', borderWidth: 2,
+        fill: true, backgroundColor: 'rgba(251,146,60,.08)', tension: 0.4, pointRadius: 0 }
+    ]
+  },
+  options: { ...BASE_OPTS }
+});
+
+const chartOcc = new Chart(document.getElementById('chartOcc'), {
+  type: 'bar',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Kişi Sayısı', data: [], backgroundColor: 'rgba(167,139,250,.7)',
+        borderColor: '#a78bfa', borderWidth: 1, borderRadius: 3 }
+    ]
+  },
+  options: {
+    ...BASE_OPTS,
+    plugins: { ...BASE_OPTS.plugins, legend: { display: false } }
+  }
+});
+
+const chartDaily = new Chart(document.getElementById('chartDaily'), {
+  type: 'bar',
+  data: {
+    labels: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'],
+    datasets: [
+      { label: 'Bazhat', data: [], backgroundColor: 'rgba(248,113,113,.6)',
+        borderColor: '#f87171', borderWidth: 1, borderRadius: 3 },
+      { label: 'Otomasyonlu', data: [], backgroundColor: 'rgba(52,211,153,.7)',
+        borderColor: '#34d399', borderWidth: 1, borderRadius: 3 }
+    ]
+  },
+  options: { ...BASE_OPTS }
+});
+
+// ── UI update ─────────────────────────────────────────────────
+function updateUI(d) {
+  // Progress
+  document.getElementById('sim-daytime').textContent = `${d.current_day} ${d.current_time}`;
+  document.getElementById('sim-pct').textContent = `%${d.progress}`;
+  document.getElementById('prog-bar').style.width = `${d.progress}%`;
+
+  // Sensors
+  document.getElementById('s-occ').textContent  = d.occupancy;
+  document.getElementById('s-temp').textContent  = d.temperature;
+  document.getElementById('s-hum').textContent   = d.humidity;
+
+  const motEl  = document.getElementById('s-motion');
+  const motIco = document.getElementById('motion-ico');
+  if (d.motion_detected) {
+    motEl.textContent = 'VAR'; motEl.style.color = 'var(--success)';
+    motIco.textContent = '🟢';
+  } else {
+    motEl.textContent = 'YOK'; motEl.style.color = 'var(--muted)';
+    motIco.textContent = '⚫';
+  }
+
+  // Lighting badge
+  const bl = document.getElementById('b-light');
+  if (d.lighting_level === 100) {
+    bl.className = 'sys-badge b-on';
+    bl.innerHTML = '<i class="bi bi-lightbulb-fill"></i> Aydınlatma: %100';
+  } else if (d.lighting_level === 30) {
+    bl.className = 'sys-badge b-dim';
+    bl.innerHTML = '<i class="bi bi-lightbulb-fill"></i> Aydınlatma: %30 (Dim)';
+  } else {
+    bl.className = 'sys-badge b-off';
+    bl.innerHTML = '<i class="bi bi-lightbulb"></i> Aydınlatma: KAPALI';
+  }
+
+  // HVAC badge
+  const bh = document.getElementById('b-hvac');
+  if (d.hvac_on) {
+    bh.className = 'sys-badge b-on';
+    bh.innerHTML = '<i class="bi bi-thermometer-sun"></i> HVAC: AÇIK';
+  } else {
+    bh.className = 'sys-badge b-off';
+    bh.innerHTML = '<i class="bi bi-thermometer-half"></i> HVAC: KAPALI';
+  }
+
+  // Projector badge
+  const bp = document.getElementById('b-proj');
+  if (d.projector_on) {
+    bp.className = 'sys-badge b-on';
+    bp.innerHTML = '<i class="bi bi-projector-fill"></i> Projektör: AÇIK';
+  } else {
+    bp.className = 'sys-badge b-off';
+    bp.innerHTML = '<i class="bi bi-projector"></i> Projektör: KAPALI';
+  }
+
+  // KPIs
+  document.getElementById('kpi-kwh').textContent = d.savings_kwh.toFixed(2);
+  document.getElementById('kpi-pct').textContent  = `%${d.savings_pct}`;
+  document.getElementById('kpi-tl').textContent   = d.cost_saved_tl.toFixed(2);
+  document.getElementById('kpi-co2').textContent  = d.carbon_saved_kg.toFixed(2);
+
+  // Totals
+  document.getElementById('e-auto').textContent = `${d.energy_auto.toFixed(2)} kWh`;
+  document.getElementById('e-base').textContent = `${d.energy_baseline.toFixed(2)} kWh`;
+
+  // Charts
+  if (d.history && d.history.length > 0) {
+    const N = 96; // son 48 saat (30dk aralıkta)
+    const h = d.history.slice(-N);
+    const lbl = h.map(x => x.label);
+
+    chartPower.data.labels = lbl;
+    chartPower.data.datasets[0].data = h.map(x => x.power_auto);
+    chartPower.data.datasets[1].data = h.map(x => x.power_baseline);
+    chartPower.update('none');
+
+    chartEnergy.data.labels = lbl;
+    chartEnergy.data.datasets[0].data = h.map(x => x.energy_auto);
+    chartEnergy.data.datasets[1].data = h.map(x => x.energy_baseline);
+    chartEnergy.update('none');
+
+    chartOcc.data.labels = lbl;
+    chartOcc.data.datasets[0].data = h.map(x => x.occupancy);
+    chartOcc.update('none');
+  }
+
+  // Günlük döküm
+  if (d.daily && d.daily.length === 7) {
+    chartDaily.data.datasets[0].data = d.daily.map(x => x.baseline);
+    chartDaily.data.datasets[1].data = d.daily.map(x => x.auto);
+    chartDaily.update('none');
+
+    let tb = '', tAuto = 0, tBase = 0, tSav = 0, tTl = 0;
+    d.daily.forEach(x => {
+      tb += `<tr>
+        <td>${x.day_short}</td>
+        <td class="text-end">${x.auto.toFixed(2)}</td>
+        <td class="text-end">${x.baseline.toFixed(2)}</td>
+        <td class="text-end text-success">${x.savings.toFixed(2)} <span style="color:var(--muted);font-size:.62rem">%${x.savings_pct}</span></td>
+        <td class="text-end" style="color:#fde68a">${x.cost_saved_tl.toFixed(0)}</td>
+      </tr>`;
+      tAuto += x.auto; tBase += x.baseline; tSav += x.savings; tTl += x.cost_saved_tl;
+    });
+    document.getElementById('daily-tbody').innerHTML = tb;
+    document.getElementById('dt-auto').textContent = tAuto.toFixed(2);
+    document.getElementById('dt-base').textContent = tBase.toFixed(2);
+    document.getElementById('dt-sav').textContent  = tSav.toFixed(2);
+    document.getElementById('dt-tl').textContent   = tTl.toFixed(0);
+  }
+
+  // Tamamlandı mı?
+  if (d.complete) {
+    stopPolling();
+    document.getElementById('btn-start').disabled = true;
+    document.getElementById('btn-stop').disabled  = true;
+    document.getElementById('sim-daytime').textContent = '✅ Simülasyon tamamlandı';
+  }
+}
+
+// ── API helpers ───────────────────────────────────────────────
+let pollTimer = null;
+let wsActive = false;
+
+function poll() {
+  fetch('/api/status')
+    .then(r => r.json())
+    .then(updateUI)
+    .catch(console.error);
+}
+
+function startPolling() {
+  if (!pollTimer) pollTimer = setInterval(() => {
+    // WebSocket aktifse polling'i yavaşlat (sadece her 5sn'de bir backup)
+    if (!wsActive || Math.random() < 0.2) poll();
+  }, 1000);
+}
+function stopPolling() {
+  clearInterval(pollTimer); pollTimer = null;
+}
+
+// WebSocket — sim güncellemelerini canlı al
+if (window.io) {
+  const sock = io();
+  sock.on('connect',    () => { wsActive = true;  });
+  sock.on('disconnect', () => { wsActive = false; });
+  sock.on('sim_update', (d) => updateUI(d));
+  sock.on('run_complete', () => { poll(); stopPolling(); });
+}
+
+function startSim() {
+  fetch('/api/start', { method: 'POST' })
+    .then(() => {
+      document.getElementById('btn-start').disabled = true;
+      document.getElementById('btn-stop').disabled  = false;
+      startPolling();
+    });
+}
+function stopSim() {
+  fetch('/api/stop', { method: 'POST' })
+    .then(() => {
+      document.getElementById('btn-start').disabled = false;
+      document.getElementById('btn-stop').disabled  = true;
+      stopPolling();
+    });
+}
+function resetSim() {
+  stopPolling();
+  fetch('/api/reset', { method: 'POST' })
+    .then(() => {
+      document.getElementById('btn-start').disabled = false;
+      document.getElementById('btn-stop').disabled  = true;
+      poll();
+    });
+}
+function updateSpeed(v) {
+  document.getElementById('speed-val').textContent  = v;
+  document.getElementById('speed-chip').textContent = `${v}× Hız`;
+  fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ speed: parseInt(v) })
+  });
+}
+
+// İlk yükleme
+poll();
+</script>
+<script src="/static/pwa.js"></script>
+
+</body>
+</html>
