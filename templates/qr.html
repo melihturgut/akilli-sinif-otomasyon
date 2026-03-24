@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Kodlar — Akıllı Sınıf</title>
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#0a2340" />
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="/static/icons/favicon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Akıllı Sınıf" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    .wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
+    .qr-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 18px 14px;
+      text-align: center;
+      color: #0a2340;
+      margin-bottom: 14px;
+    }
+    .qr-card h3 { margin: 0 0 2px; font-size: 1.1rem; font-weight: 800; }
+    .qr-card .sub { font-size: .78rem; color: #475569; margin-bottom: 12px; }
+    .qr-box { display: flex; justify-content: center; }
+    .qr-box canvas, .qr-box img { border-radius: 8px; }
+    .qr-url { font-size: .62rem; color: #64748b; margin-top: 10px; word-break: break-all; }
+    .hint { font-size: .75rem; color: var(--muted); }
+    @media print {
+      .app-header, .app-nav, .hint-panel, .footer, .no-print { display: none !important; }
+      body { background: #fff; }
+      .qr-card { page-break-inside: avoid; border: 1px solid #cbd5e1; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>📱 Bölge QR Kodları</h1>
+  <p>Masalara yapıştırılacak QR kodları</p>
+</div>
+
+<nav class="app-nav">
+  <a href="/">📊 Simülasyon</a>
+  <a href="/hoca">👨‍🏫 Hoca</a>
+  <a href="/admin">⚙️ Yönetici</a>
+  <a href="/analitik">🔥 Analitik</a>
+  <a href="/panel">🚪 Canlı Panel</a>
+  <a href="/qr" class="active">📱 QR Kodlar</a>
+</nav>
+
+<div class="wrap">
+
+  <div class="panel hint-panel mb-3">
+    <div class="hint">
+      Her bölgenin QR kodunu yazdırıp ilgili sıralara yapıştırın. Öğrenci telefonuyla
+      QR'ı okuttuğunda giriş sayfası açılır; öğrenci numarasını girince o bölgenin
+      aydınlatması açılır ve yoklaması alınır.
+    </div>
+    <button class="btn-app btn-ghost-app mt-3 no-print" onclick="window.print()">
+      🖨️ QR Kodları Yazdır
+    </button>
+  </div>
+
+  {% for zid, z in zones.items() %}
+  <div class="qr-card">
+    <h3>{{ z.name }}</h3>
+    <div class="sub">{{ z.desc }}</div>
+    <div class="qr-box" id="qr-{{ zid }}"></div>
+    <div class="qr-url" id="url-{{ zid }}"></div>
+  </div>
+  {% endfor %}
+
+  <div class="footer">
+    Akıllı Sınıf Otomasyonu · MDB308 Çok Disiplinli Takım Projesi
+  </div>
+</div>
+
+<script>
+  const zones = {{ zones.keys()|list|tojson }};
+  const origin = window.location.origin;
+
+  zones.forEach(zid => {
+    const url = origin + '/giris?bolge=' + zid;
+    new QRCode(document.getElementById('qr-' + zid), {
+      text: url,
+      width: 200,
+      height: 200,
+      colorDark: '#0a2340',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    document.getElementById('url-' + zid).textContent = url;
+  });
+</script>
+<script src="/static/pwa.js"></script>
+
+</body>
+</html>
