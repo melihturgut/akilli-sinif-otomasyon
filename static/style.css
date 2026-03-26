@@ -1,0 +1,96 @@
+:root {
+  --bg:       #080c14;
+  --card-bg:  #111827;
+  --border:   #1f2a40;
+  --primary:  #38bdf8;
+  --success:  #34d399;
+  --danger:   #f87171;
+  --warning:  #fbbf24;
+  --muted:    #6b7280;
+  --text:     #e2e8f0;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+/* Header */
+.app-header {
+  background: linear-gradient(135deg, #0c4a6e 0%, #0a2340 100%);
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid #1e3a5f;
+  text-align: center;
+}
+.app-header h1 { font-size: 1.1rem; font-weight: 700; margin: 0; letter-spacing: .5px; }
+.app-header p  { font-size: .7rem; opacity: .65; margin: 3px 0 0; }
+
+/* Nav */
+.app-nav {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #0a0f1a;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.app-nav a {
+  flex: 1;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.app-nav a.active { color: var(--primary); border-color: rgba(56,189,248,.4); background: rgba(56,189,248,.08); }
+
+/* Panel card */
+.panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+/* Buttons */
+.btn-app {
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: .95rem;
+  padding: 14px 0;
+  width: 100%;
+  cursor: pointer;
+}
+.btn-primary-app { background: var(--success); color: #021e14; }
+.btn-ghost-app   { background: #1f2937; color: var(--text); border: 1px solid var(--border); }
+.btn-danger-app  { background: var(--danger); color: #2e0707; }
+.btn-app:disabled { opacity: .45; pointer-events: none; }
+
+/* Inputs */
+.input-app {
+  width: 100%;
+  background: #0a0f1a;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 1.2rem;
+  padding: 13px 14px;
+  text-align: center;
+  letter-spacing: 2px;
+}
+.input-app:focus { outline: none; border-color: var(--primary); }
+
+/* Footer */
+.footer { font-size: .62rem; color: var(--muted); text-align: center; padding: 14px 0 22px; }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: #2a3a50; border-radius: 2px; }
