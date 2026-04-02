@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hoca Paneli — Ders Programı</title>
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#0a2340" />
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="/static/icons/favicon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Akıllı Sınıf" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    .wrap { max-width: 720px; margin: 0 auto; padding: 14px; }
+
+    /* Form grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    label { font-size: .68rem; color: var(--muted); display: block; margin-bottom: 3px; text-transform: uppercase; letter-spacing: .3px; }
+    select, input[type=text], input[type=number] {
+      width: 100%; background: #0a0f1a; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: .88rem; padding: 9px 11px;
+    }
+    select:focus, input:focus { outline: none; border-color: var(--primary); }
+
+    /* Day group */
+    .day-group { margin-bottom: 12px; }
+    .day-title {
+      font-size: .72rem; font-weight: 700; color: var(--primary);
+      text-transform: uppercase; letter-spacing: .8px; padding: 6px 4px; margin-top: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .class-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 10px; margin-top: 6px;
+    }
+    .class-row.inactive { opacity: .45; border-style: dashed; }
+    .class-info { flex: 1; min-width: 0; }
+    .class-name { font-weight: 700; font-size: .92rem; }
+    .class-meta { font-size: .7rem; color: var(--muted); margin-top: 2px; }
+    .class-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .icon-btn {
+      background: #1f2937; border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 5px 9px; font-size: .72rem; cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--primary); }
+    .icon-btn.del:hover { border-color: var(--danger); color: var(--danger); }
+    .icon-btn.toggle-on  { color: var(--success); border-color: var(--success); }
+    .icon-btn.toggle-off { color: var(--muted); }
+
+    .empty { color: var(--muted); text-align: center; padding: 16px; font-size: .8rem; }
+    .toast {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      background: var(--success); color: #021e14; padding: 10px 18px; border-radius: 8px;
+      font-weight: 700; font-size: .85rem; opacity: 0; transition: opacity .2s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+    .toast.err { background: var(--danger); color: #2e0707; }
+  </style>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>👨‍🏫 Hoca Paneli</h1>
+  <p>
+    <span style="opacity:.8">👤 {{ user.display_name or user.username }}</span>
+    &nbsp;·&nbsp;
+    <a href="#" onclick="openPwdModal();return false" style="color:#fde68a;text-decoration:none">Şifre Değiştir</a>
+    &nbsp;·&nbsp;
+    <a href="#" onclick="doLogout();return false" style="color:#f87171;text-decoration:none">Çıkış</a>
+  </p>
+</div>
+
+<nav class="app-nav">
+  <a href="/">📊 Simülasyon</a>
+  <a href="/hoca" class="active">👨‍🏫 Hoca</a>
+  <a href="/admin">⚙️ Yönetici</a>
+  <a href="/analitik">🔥 Analitik</a>
+  <a href="/panel">🚪 Canlı Panel</a>
+  <a href="/qr">📱 QR Kodlar</a>
+</nav>
+
+<div class="wrap">
+
+  <!-- Yeni / Düzenle Form -->
+  <div class="panel mb-3">
+    <div style="font-weight:700;font-size:.9rem;margin-bottom:10px" id="form-title">
+      ➕ Yeni Ders Ekle
+    </div>
+    <div class="form-grid">
+      <div class="full">
+        <label>Ders Adı</label>
+        <input type="text" id="f-name" placeholder="örn. Sayısal Analiz" maxlength="40" />
+      </div>
+      <div>
+        <label>Gün</label>
+        <select id="f-day">
+          {% for d in day_names %}<option value="{{ loop.index0 }}">{{ d }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Başlangıç Saati</label>
+        <select id="f-start">
+          {% for h in range(7, 22) %}<option value="{{ h }}">{{ '%02d:00'|format(h) }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Süre (saat)</label>
+        <select id="f-duration">
+          {% for n in range(1, 6) %}<option value="{{ n }}">{{ n }} saat</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Beklenen Öğrenci</label>
+        <input type="number" id="f-students" min="1" max="200" value="25" />
+      </div>
+      <div class="full" style="display:flex;gap:6px;margin-top:4px">
+        <button class="btn-app btn-primary-app" id="btn-save" onclick="saveClass()">Kaydet</button>
+        <button class="btn-app btn-ghost-app" id="btn-cancel" onclick="resetForm()" style="display:none">İptal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ders Listesi -->
+  <div id="list-wrap"></div>
+
+  <div class="footer">
+    Anlık değişiklik için ışık simgesine basarak dersi geçici olarak iptal edebilirsiniz.
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- Şifre Değiştir Modal -->
+<div id="pwd-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99;align-items:center;justify-content:center;padding:20px">
+  <div class="panel" style="max-width:340px;width:100%">
+    <div style="font-weight:700;font-size:.95rem;margin-bottom:12px">🔒 Şifre Değiştir</div>
+    <label>Mevcut Şifre</label>
+    <input type="password" id="pwd-old" style="width:100%;background:#0a0f1a;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 11px;font-size:.88rem" />
+    <label style="margin-top:10px">Yeni Şifre (min 6 karakter)</label>
+    <input type="password" id="pwd-new" style="width:100%;background:#0a0f1a;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 11px;font-size:.88rem" />
+    <div style="display:flex;gap:6px;margin-top:14px">
+      <button class="btn-app btn-primary-app" onclick="doChangePassword()">Değiştir</button>
+      <button class="btn-app btn-ghost-app" onclick="document.getElementById('pwd-modal').style.display='none'">İptal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function doLogout() {
+    if (!confirm('Çıkış yapmak istediğinize emin misiniz?')) return;
+    fetch('/api/logout', { method: 'POST' }).then(() => window.location.href = '/login');
+  }
+
+  function openPwdModal() {
+    document.getElementById('pwd-old').value = '';
+    document.getElementById('pwd-new').value = '';
+    document.getElementById('pwd-modal').style.display = 'flex';
+  }
+
+  function doChangePassword() {
+    const oldP = document.getElementById('pwd-old').value;
+    const newP = document.getElementById('pwd-new').value;
+    if (!oldP || !newP) { toast('Tüm alanları doldurun.', true); return; }
+    fetch('/api/change-password', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ old_password: oldP, new_password: newP })
+    }).then(r => r.json()).then(res => {
+      if (res.ok) { toast('Şifre değiştirildi'); document.getElementById('pwd-modal').style.display='none'; }
+      else { toast(res.error || 'Hata', true); }
+    });
+  }
+
+  // 401 yakalama — oturum biterse login'e at
+  const _origFetch = window.fetch;
+  window.fetch = function(...args) {
+    return _origFetch(...args).then(r => {
+      if (r.status === 401) window.location.href = '/login?next=/hoca';
+      return r;
+    });
+  };
+</script>
+
+<script>
+  const DAY_NAMES = {{ day_names|tojson }};
+  let editId = null;
+
+  function toast(msg, isErr=false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isErr ? ' err' : '');
+    setTimeout(() => t.className = 'toast' + (isErr ? ' err' : ''), 2200);
+  }
+
+  function loadList() {
+    fetch('/api/schedule').then(r => r.json()).then(d => {
+      const classes = d.classes;
+      const wrap = document.getElementById('list-wrap');
+      if (!classes.length) {
+        wrap.innerHTML = '<div class="panel empty">Henüz ders eklenmemiş.</div>';
+        return;
+      }
+      // Güne göre grupla
+      const byDay = {};
+      classes.forEach(c => { (byDay[c.day] = byDay[c.day] || []).push(c); });
+      let html = '';
+      for (let d = 0; d < 7; d++) {
+        if (!byDay[d]) continue;
+        byDay[d].sort((a,b) => a.start - b.start);
+        html += `<div class="day-group">
+          <div class="day-title">${DAY_NAMES[d]}</div>`;
+        byDay[d].forEach(c => {
+          const endH = c.start + c.duration;
+          html += `<div class="class-row ${c.active ? '' : 'inactive'}">
+            <div class="class-info">
+              <div class="class-name">${escapeHtml(c.name)}</div>
+              <div class="class-meta">
+                ${pad(c.start)}:00 – ${pad(endH)}:00 · ${c.duration} saat · ${c.students} öğrenci
+                ${c.active ? '' : ' · <span style="color:var(--danger)">İPTAL</span>'}
+              </div>
+            </div>
+            <div class="class-actions">
+              <button class="icon-btn ${c.active ? 'toggle-on' : 'toggle-off'}" title="Aktif/İptal" onclick="toggleClass(${c.id})">
+                ${c.active ? '💡' : '⚫'}
+              </button>
+              <button class="icon-btn" title="Düzenle" onclick='editClass(${JSON.stringify(c)})'>✎</button>
+              <button class="icon-btn del" title="Sil" onclick="delClass(${c.id}, '${escapeJs(c.name)}')">🗑</button>
+            </div>
+          </div>`;
+        });
+        html += '</div>';
+      }
+      wrap.innerHTML = html;
+    });
+  }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+  function escapeJs(s)   { return String(s).replace(/['\\]/g, '\\$&'); }
+
+  function getForm() {
+    return {
+      name:     document.getElementById('f-name').value.trim(),
+      day:      parseInt(document.getElementById('f-day').value),
+      start:    parseInt(document.getElementById('f-start').value),
+      duration: parseInt(document.getElementById('f-duration').value),
+      students: parseInt(document.getElementById('f-students').value),
+    };
+  }
+
+  function saveClass() {
+    const data = getForm();
+    if (!data.name) { toast('Ders adı girin.', true); return; }
+    const url = editId ? `/api/schedule/${editId}` : '/api/schedule';
+    const method = editId ? 'PUT' : 'POST';
+    fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) })
+      .then(r => r.json()).then(res => {
+        if (res.ok) {
+          toast(editId ? 'Güncellendi' : 'Eklendi');
+          resetForm();
+          loadList();
+        } else { toast(res.error || 'Hata', true); }
+      });
+  }
+
+  function editClass(c) {
+    editId = c.id;
+    document.getElementById('f-name').value = c.name;
+    document.getElementById('f-day').value = c.day;
+    document.getElementById('f-start').value = c.start;
+    document.getElementById('f-duration').value = c.duration;
+    document.getElementById('f-students').value = c.students;
+    document.getElementById('form-title').textContent = '✎ Dersi Düzenle';
+    document.getElementById('btn-save').textContent = 'Güncelle';
+    document.getElementById('btn-cancel').style.display = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function resetForm() {
+    editId = null;
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-students').value = '25';
+    document.getElementById('form-title').textContent = '➕ Yeni Ders Ekle';
+    document.getElementById('btn-save').textContent = 'Kaydet';
+    document.getElementById('btn-cancel').style.display = 'none';
+  }
+
+  function delClass(id, name) {
+    if (!confirm(`"${name}" dersini silmek istiyor musunuz?`)) return;
+    fetch(`/api/schedule/${id}`, { method: 'DELETE' })
+      .then(r => r.json()).then(res => {
+        if (res.ok) { toast('Silindi'); loadList(); }
+        else { toast(res.error || 'Hata', true); }
+      });
+  }
+
+  function toggleClass(id) {
+    fetch(`/api/schedule/${id}/toggle`, { method: 'POST' })
+      .then(r => r.json()).then(res => {
+        if (res.ok) { toast(res.active ? 'Ders aktif' : 'Ders iptal edildi'); loadList(); }
+        else { toast(res.error || 'Hata', true); }
+      });
+  }
+
+  loadList();
+
+  // Başka bir kullanıcı program değiştirirse senkronize ol
+  if (window.io) {
+    const sock = io();
+    sock.on('schedule_update', () => loadList());
+  }
+</script>
+<script src="/static/notifications.js"></script>
+<script src="/static/pwa.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,68 @@
+{
+  "classes": [
+    {
+      "name": "Matematik I",
+      "day": 0,
+      "start": 9,
+      "duration": 2,
+      "students": 25,
+      "id": 1,
+      "active": true
+    },
+    {
+      "name": "Fizik",
+      "day": 0,
+      "start": 13,
+      "duration": 3,
+      "students": 30,
+      "id": 2,
+      "active": true
+    },
+    {
+      "name": "Programlama",
+      "day": 1,
+      "start": 10,
+      "duration": 2,
+      "students": 20,
+      "id": 3,
+      "active": true
+    },
+    {
+      "name": "Diferansiyel denklemler",
+      "day": 1,
+      "start": 14,
+      "duration": 2,
+      "students": 22,
+      "id": 4,
+      "active": true
+    },
+    {
+      "name": "Bilgisayar ağları",
+      "day": 2,
+      "start": 14,
+      "duration": 2,
+      "students": 100,
+      "id": 5,
+      "active": true
+    },
+    {
+      "name": "Veri madenciliği",
+      "day": 3,
+      "start": 11,
+      "duration": 2,
+      "students": 18,
+      "id": 6,
+      "active": true
+    },
+    {
+      "name": "Yapay Zeka",
+      "day": 4,
+      "start": 10,
+      "duration": 2,
+      "students": 24,
+      "id": 7,
+      "active": true
+    }
+  ],
+  "next_id": 10
+}
