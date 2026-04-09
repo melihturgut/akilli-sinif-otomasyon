@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yönetici Paneli</title>
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#0a2340" />
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="/static/icons/favicon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Akıllı Sınıf" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    .wrap { max-width: 860px; margin: 0 auto; padding: 14px; }
+
+    /* Stats grid */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 8px; text-align: center; }
+    .stat-card .v { font-size: 1.7rem; font-weight: 800; }
+    .stat-card .l { font-size: .62rem; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+
+    /* Section header */
+    .sec-title { font-weight: 700; font-size: .9rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .sec-title .ct { font-size: .65rem; color: var(--muted); font-weight: 500; margin-left: auto; }
+
+    /* Tables */
+    table { width: 100%; color: var(--text); font-size: .76rem; border-collapse: collapse; }
+    table th, table td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+    table th { color: var(--muted); font-size: .62rem; text-transform: uppercase; letter-spacing: .3px; }
+    table tr:hover { background: rgba(255,255,255,.02); }
+    .empty { color: var(--muted); text-align: center; padding: 18px; font-size: .8rem; }
+
+    .pill { font-size: .65rem; padding: 2px 7px; border-radius: 10px; font-weight: 700; }
+    .pill-giris    { background: rgba(52,211,153,.15); color: var(--success); }
+    .pill-cikis    { background: rgba(248,113,113,.15); color: var(--danger); }
+    .pill-yenileme { background: rgba(251,191,36,.15); color: var(--warning); }
+    .pill-inactive { background: rgba(107,114,128,.15); color: var(--muted); }
+
+    /* Search */
+    .search-box {
+      display: flex; gap: 6px; margin-bottom: 10px;
+    }
+    .search-box input {
+      flex: 1; background: #0a0f1a; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); padding: 8px 11px; font-size: .82rem;
+    }
+    .search-box input:focus { outline: none; border-color: var(--primary); }
+    .search-box button {
+      background: #1f2937; border: 1px solid var(--border); color: var(--text);
+      border-radius: 8px; padding: 0 14px; cursor: pointer; font-size: .8rem;
+    }
+
+    /* Occupancy bar */
+    .occ-bar {
+      height: 6px; background: #0a0f1a; border-radius: 3px; overflow: hidden; min-width: 60px;
+    }
+    .occ-bar > div { height: 100%; background: var(--success); border-radius: 3px; }
+    .occ-low > div { background: var(--danger); }
+    .occ-mid > div { background: var(--warning); }
+
+    /* Sim run row expandable */
+    .run-detail {
+      background: #0a0f1a; padding: 8px; font-size: .68rem; color: var(--muted);
+      display: none; border-top: 1px solid var(--border);
+    }
+    .run-detail.show { display: block; }
+    .daily-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .day-chip {
+      background: #111827; border: 1px solid var(--border); border-radius: 5px;
+      padding: 2px 7px; font-size: .65rem;
+    }
+
+    /* Export buttons */
+    .export-btn {
+      display: block; padding: 12px 12px;
+      background: #0a0f1a; border: 1px solid var(--border); border-radius: 10px;
+      text-decoration: none; color: var(--text); font-size: .82rem; line-height: 1.4;
+      transition: border-color .15s, background .15s;
+    }
+    .export-btn:hover { border-color: var(--primary); background: rgba(56,189,248,.06); color: var(--text); }
+    .export-btn.primary { border-color: var(--success); background: rgba(52,211,153,.08); }
+    .export-btn.primary:hover { background: rgba(52,211,153,.14); }
+    .export-sub { font-size: .62rem; color: var(--muted); }
+  </style>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>📊 Yönetici Paneli</h1>
+  <p>
+    <span style="opacity:.8">👤 {{ user.display_name or user.username }}</span>
+    &nbsp;·&nbsp;
+    <a href="#" onclick="doLogout();return false" style="color:#f87171;text-decoration:none">Çıkış</a>
+  </p>
+</div>
+
+<nav class="app-nav">
+  <a href="/">📊 Simülasyon</a>
+  <a href="/hoca">👨‍🏫 Hoca</a>
+  <a href="/admin" class="active">⚙️ Yönetici</a>
+  <a href="/analitik">🔥 Analitik</a>
+  <a href="/panel">🚪 Canlı Panel</a>
+  <a href="/qr">📱 QR Kodlar</a>
+</nav>
+
+<div class="wrap">
+
+  <!-- Dışa aktarma -->
+  <div class="panel mb-3">
+    <div class="sec-title">📤 Veri Dışa Aktar
+      <span class="ct">Endüstri / Minitab / Pandas için</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
+      <a href="/api/export/full.pdf" class="export-btn primary" download>
+        📄 <b>PDF Raporu</b><br><span class="export-sub">5 bölüm: kapak, KPI, sim, ders, yoklama</span>
+      </a>
+      <a href="/api/export/full.xlsx" class="export-btn primary" download>
+        📊 <b>Excel — Tüm Veri</b><br><span class="export-sub">5 sayfa: özet, yoklama, koşmalar, ders, günlük</span>
+      </a>
+      <a href="/api/export/attendance.csv" class="export-btn" download>
+        📋 Yoklama CSV<br><span class="export-sub">Tüm giriş/çıkış kayıtları</span>
+      </a>
+      <a href="/api/export/runs.csv" class="export-btn" download>
+        ⚡ Sim Koşmaları CSV<br><span class="export-sub">Enerji özetleri</span>
+      </a>
+      <a href="/api/export/class-stats.csv" class="export-btn" download>
+        📚 Ders Doluluk CSV<br><span class="export-sub">Çapraz analiz</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Top stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="v" style="color:var(--primary)" id="s-total">—</div>
+      <div class="l">Toplam Olay</div>
+    </div>
+    <div class="stat-card">
+      <div class="v" style="color:var(--success)" id="s-unique">—</div>
+      <div class="l">Benzersiz Öğrenci</div>
+    </div>
+    <div class="stat-card">
+      <div class="v" style="color:var(--warning)" id="s-today">—</div>
+      <div class="l">Bugünkü Giriş</div>
+    </div>
+  </div>
+
+  <!-- Ders Bazlı Doluluk -->
+  <div class="panel mb-3">
+    <div class="sec-title">
+      📚 Ders Bazlı Doluluk
+      <span class="ct" id="cs-count"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>Ders</th><th>Gün/Saat</th><th class="text-end">Beklenen</th><th class="text-end">Giriş</th><th>Doluluk</th></tr>
+        </thead>
+        <tbody id="cs-tbody"><tr><td colspan="5" class="empty">Yükleniyor...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Geçmiş Yoklama -->
+  <div class="panel mb-3">
+    <div class="sec-title">
+      📋 Yoklama Kayıtları
+      <span class="ct" id="att-count"></span>
+    </div>
+    <div class="search-box">
+      <input type="text" id="att-search" placeholder="Öğrenci no ara (örn. 20210001)" inputmode="numeric" />
+      <button onclick="loadAttendance()">Ara</button>
+      <button onclick="clearSearch()" id="att-clear" style="display:none">✕</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>Öğrenci No</th><th>Bölge</th><th>İşlem</th><th>Tarih/Saat</th></tr>
+        </thead>
+        <tbody id="att-tbody"><tr><td colspan="4" class="empty">Yükleniyor...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Geçmiş Sim Koşmaları -->
+  <div class="panel mb-3">
+    <div class="sec-title">
+      ⚡ Geçmiş Simülasyon Koşmaları
+      <span class="ct" id="runs-count"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Tarih</th><th class="text-end">Tasarruf</th><th class="text-end">%</th><th class="text-end">TL</th><th class="text-end">CO₂</th></tr>
+        </thead>
+        <tbody id="runs-tbody"><tr><td colspan="6" class="empty">Yükleniyor...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">Akıllı Sınıf Otomasyonu · MDB308 Çok Disiplinli Takım Projesi</div>
+</div>
+
+<script>
+  const DAY_NAMES = {{ day_names|tojson }};
+
+  // 401 → login
+  const _origFetch = window.fetch;
+  window.fetch = function(...args) {
+    return _origFetch(...args).then(r => {
+      if (r.status === 401) window.location.href = '/login?next=/admin';
+      return r;
+    });
+  };
+
+  function doLogout() {
+    if (!confirm('Çıkış yapmak istediğinize emin misiniz?')) return;
+    fetch('/api/logout', { method: 'POST' }).then(() => window.location.href = '/login');
+  }
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function loadStats() {
+    fetch('/api/db/stats').then(r => r.json()).then(d => {
+      document.getElementById('s-total').textContent = d.total_events;
+      document.getElementById('s-unique').textContent = d.unique_students;
+      document.getElementById('s-today').textContent = d.today_checkins;
+    });
+  }
+
+  function loadClassStats() {
+    fetch('/api/db/class-stats').then(r => r.json()).then(d => {
+      document.getElementById('cs-count').textContent = d.length + ' ders';
+      if (!d.length) {
+        document.getElementById('cs-tbody').innerHTML = '<tr><td colspan="5" class="empty">Ders yok</td></tr>';
+        return;
+      }
+      document.getElementById('cs-tbody').innerHTML = d.map(c => {
+        const occ = c.occupancy_rate;
+        const occClass = occ < 30 ? 'occ-low' : occ < 70 ? 'occ-mid' : '';
+        const width = Math.min(occ, 100);
+        return `<tr>
+          <td><b>${esc(c.class_name)}</b>${c.active ? '' : ' <span class="pill pill-inactive">İPTAL</span>'}</td>
+          <td>${DAY_NAMES[c.day].slice(0,3)} ${c.time}</td>
+          <td class="text-end">${c.expected}</td>
+          <td class="text-end">${c.unique_students}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="occ-bar ${occClass}"><div style="width:${width}%"></div></div>
+              <span style="font-size:.7rem;color:var(--muted);min-width:38px">%${occ}</span>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    });
+  }
+
+  function loadAttendance() {
+    const search = document.getElementById('att-search').value.trim();
+    document.getElementById('att-clear').style.display = search ? '' : 'none';
+    const url = '/api/db/attendance?limit=200' + (search ? '&student_no=' + encodeURIComponent(search) : '');
+    fetch(url).then(r => r.json()).then(d => {
+      document.getElementById('att-count').textContent = d.length + ' kayıt' + (search ? ` (ara: ${search})` : '');
+      if (!d.length) {
+        document.getElementById('att-tbody').innerHTML = '<tr><td colspan="4" class="empty">Kayıt yok</td></tr>';
+        return;
+      }
+      const labels = { giris: 'Giriş', cikis: 'Çıkış', yenileme: 'Yenileme' };
+      document.getElementById('att-tbody').innerHTML = d.map(e => `
+        <tr>
+          <td><b>${esc(e.student_no)}</b></td>
+          <td>${esc(e.zone)}</td>
+          <td><span class="pill pill-${e.action}">${labels[e.action] || e.action}</span></td>
+          <td style="color:var(--muted)">${esc(e.time)}</td>
+        </tr>`).join('');
+    });
+  }
+
+  function clearSearch() {
+    document.getElementById('att-search').value = '';
+    loadAttendance();
+  }
+
+  function loadRuns() {
+    fetch('/api/db/runs').then(r => r.json()).then(d => {
+      document.getElementById('runs-count').textContent = d.length + ' koşma';
+      if (!d.length) {
+        document.getElementById('runs-tbody').innerHTML = '<tr><td colspan="6" class="empty">Henüz tamamlanmış koşma yok</td></tr>';
+        return;
+      }
+      document.getElementById('runs-tbody').innerHTML = d.map(r => {
+        const dailyHtml = (r.daily || []).map(x =>
+          `<span class="day-chip">${x.day}: <b style="color:var(--success)">${x.savings.toFixed(1)}</b></span>`
+        ).join('');
+        return `
+          <tr onclick="toggleRun(${r.id})" style="cursor:pointer">
+            <td>#${r.id}</td>
+            <td style="color:var(--muted)">${esc(r.finished_at.slice(0,16))}</td>
+            <td class="text-end text-success"><b>${r.savings_kwh.toFixed(2)}</b> kWh</td>
+            <td class="text-end">%${r.savings_pct}</td>
+            <td class="text-end" style="color:#fde68a">${Math.round(r.cost_saved_tl)}</td>
+            <td class="text-end" style="color:#a5f3fc">${r.carbon_saved_kg.toFixed(1)} kg</td>
+          </tr>
+          <tr><td colspan="6" style="padding:0">
+            <div class="run-detail" id="run-${r.id}">
+              <div>Bazhat: ${r.energy_baseline.toFixed(2)} kWh · Otomasyonlu: ${r.energy_auto.toFixed(2)} kWh</div>
+              <div class="daily-chips">${dailyHtml}</div>
+            </div>
+          </td></tr>`;
+      }).join('');
+    });
+  }
+
+  function toggleRun(id) {
+    const el = document.getElementById('run-' + id);
+    if (el) el.classList.toggle('show');
+  }
+
+  document.getElementById('att-search').addEventListener('keydown', e => {
+    if (e.key === 'Enter') loadAttendance();
+  });
+
+  loadStats(); loadClassStats(); loadAttendance(); loadRuns();
+
+  // WebSocket abonelikleri
+  let wsConnected = false;
+  if (window.io) {
+    const sock = io();
+    sock.on('connect',    () => { wsConnected = true;  });
+    sock.on('disconnect', () => { wsConnected = false; });
+    sock.on('attendance_event', () => { loadStats(); loadAttendance(); });
+    sock.on('live_update',      () => { loadStats(); });
+    sock.on('run_complete',     () => { loadRuns(); loadStats(); });
+    sock.on('schedule_update',  () => { loadClassStats(); });
+  }
+
+  // Fallback (WS yoksa) — her 5sn'de stat yenile
+  setInterval(() => { if (!wsConnected) loadStats(); }, 5000);
+</script>
+<script src="/static/notifications.js"></script>
+<script src="/static/pwa.js"></script>
+
+</body>
+</html>
