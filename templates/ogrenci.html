@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Öğrenci Paneli</title>
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#0a2340" />
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="/static/icons/favicon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Akıllı Sınıf" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    .wrap { max-width: 560px; margin: 0 auto; padding: 14px; }
+
+    /* Profile */
+    .profile-card {
+      background: linear-gradient(135deg, rgba(56,189,248,.18) 0%, rgba(167,139,250,.12) 100%);
+      border: 1px solid rgba(56,189,248,.4);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .profile-name { font-size: 1.05rem; font-weight: 700; }
+    .profile-meta { font-size: .72rem; color: var(--muted); margin-top: 3px; }
+
+    /* Stat tripleti */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 12px 0; }
+    .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 6px; text-align: center; }
+    .stat-card .v { font-size: 1.5rem; font-weight: 800; }
+    .stat-card .l { font-size: .58rem; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+
+    /* Active status */
+    .status-now {
+      background: rgba(52,211,153,.1); border: 1px solid var(--success);
+      border-radius: 12px; padding: 14px; text-align: center;
+    }
+    .status-out {
+      background: #0a0f1a; border: 1px dashed var(--border);
+      border-radius: 12px; padding: 14px; text-align: center; color: var(--muted);
+    }
+    .status-now .head { font-weight: 700; color: var(--success); font-size: .82rem; }
+    .status-now .zone { font-size: 1.1rem; font-weight: 800; margin-top: 4px; }
+    .status-now .timer { font-size: .72rem; color: var(--muted); margin-top: 3px; }
+
+    /* Section */
+    .sec-title { font-weight: 700; font-size: .85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .sec-title .ct { font-size: .65rem; color: var(--muted); font-weight: 500; margin-left: auto; }
+
+    /* Schedule list */
+    .day-block { margin-bottom: 8px; }
+    .day-head {
+      font-size: .68rem; font-weight: 700; color: var(--primary);
+      text-transform: uppercase; letter-spacing: .8px; padding: 4px 0;
+    }
+    .class-row {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 12px; margin-top: 4px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .class-name { font-weight: 600; font-size: .82rem; }
+    .class-time { font-size: .68rem; color: var(--muted); }
+    .class-students { font-size: .65rem; color: var(--muted); }
+
+    /* Attendance list */
+    .att-row {
+      display: flex; justify-content: space-between; padding: 8px 0;
+      border-bottom: 1px solid var(--border); font-size: .76rem;
+    }
+    .att-row:last-child { border-bottom: none; }
+    .pill { font-size: .62rem; padding: 2px 7px; border-radius: 10px; font-weight: 700; }
+    .pill-giris    { background: rgba(52,211,153,.15); color: var(--success); }
+    .pill-cikis    { background: rgba(248,113,113,.15); color: var(--danger); }
+    .pill-yenileme { background: rgba(251,191,36,.15); color: var(--warning); }
+    .empty { color: var(--muted); text-align: center; padding: 14px; font-size: .78rem; }
+
+    /* Efficiency panel */
+    .eff-live {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+      margin-bottom: 10px;
+    }
+    .eff-tile {
+      background: #0a0f1a; border: 1px solid var(--border); border-radius: 8px;
+      padding: 9px 4px; text-align: center;
+    }
+    .eff-tile .v { font-size: 1.15rem; font-weight: 800; }
+    .eff-tile .l { font-size: .58rem; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+
+    .savings-hero {
+      background: linear-gradient(135deg, rgba(52,211,153,.18) 0%, rgba(56,189,248,.1) 100%);
+      border: 1px solid rgba(52,211,153,.45);
+      border-radius: 12px; padding: 14px; text-align: center;
+    }
+    .savings-hero .big { font-size: 1.7rem; font-weight: 800; color: var(--success); }
+    .savings-hero .pct { font-size: .8rem; color: var(--success); }
+    .savings-hero .sub { font-size: .65rem; color: var(--muted); margin-top: 3px; }
+
+    .savings-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;
+    }
+    .savings-cell {
+      background: #0a0f1a; border: 1px solid var(--border); border-radius: 8px;
+      padding: 9px 10px;
+    }
+    .savings-cell .l { font-size: .58rem; color: var(--muted); text-transform: uppercase; }
+    .savings-cell .v { font-size: .98rem; font-weight: 700; margin-top: 2px; }
+    .savings-cell.cost .v { color: #fde68a; }
+    .savings-cell.co2 .v { color: #a5f3fc; }
+
+    .cum-line {
+      font-size: .68rem; color: var(--muted); margin-top: 10px; text-align: center;
+      padding-top: 8px; border-top: 1px dashed var(--border);
+    }
+    .cum-line b { color: var(--text); }
+
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+      display: inline-block; margin-right: 4px; animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  </style>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>🎓 Öğrenci Paneli</h1>
+  <p>
+    <span style="opacity:.8">👤 {{ student.name or student.student_no }}</span>
+    &nbsp;·&nbsp;
+    <a href="#" onclick="doLogout();return false" style="color:#f87171;text-decoration:none">Çıkış</a>
+  </p>
+</div>
+
+<div class="wrap">
+
+  <!-- Profile -->
+  <div class="profile-card">
+    <div class="profile-name">{{ student.name or 'İsim belirtilmemiş' }}</div>
+    <div class="profile-meta">Öğrenci No: <b style="color:var(--text)">{{ student.student_no }}</b></div>
+    <div class="profile-meta">Kayıt: {{ student.created_at[:10] }}</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="v" style="color:var(--success)" id="s-checkins">—</div>
+      <div class="l">Toplam Giriş</div>
+    </div>
+    <div class="stat-card">
+      <div class="v" style="color:var(--primary)" id="s-days">—</div>
+      <div class="l">Farklı Gün</div>
+    </div>
+    <div class="stat-card">
+      <div class="v" style="color:var(--warning)" id="s-total">—</div>
+      <div class="l">Toplam Olay</div>
+    </div>
+  </div>
+
+  <!-- Anlık durum -->
+  <div id="status-wrap" class="mb-3"></div>
+
+  <!-- Sınıf Verimliliği & Tasarruf -->
+  <div class="panel mb-3" style="margin-top:14px">
+    <div class="sec-title">
+      ⚡ Sınıf Verimliliği &amp; Tasarruf
+      <span class="ct"><span class="live-dot"></span>canlı</span>
+    </div>
+
+    <!-- Anlık -->
+    <div class="eff-live">
+      <div class="eff-tile">
+        <div class="v" style="color:var(--primary)" id="eff-people">—</div>
+        <div class="l">Sınıfta</div>
+      </div>
+      <div class="eff-tile">
+        <div class="v" style="color:var(--success)" id="eff-zones">—</div>
+        <div class="l">Açık Bölge</div>
+      </div>
+      <div class="eff-tile">
+        <div class="v" style="color:var(--warning)" id="eff-power">—</div>
+        <div class="l">Anlık Güç</div>
+      </div>
+    </div>
+
+    <!-- Tasarruf -->
+    <div id="savings-wrap">
+      <div class="empty">Henüz tamamlanmış simülasyon yok</div>
+    </div>
+  </div>
+
+  <!-- Haftalık ders programı -->
+  <div class="panel mb-3" style="margin-top:14px">
+    <div class="sec-title">📚 Haftalık Ders Programı <span class="ct" id="schedule-count"></span></div>
+    <div id="schedule-list"><div class="empty">Yükleniyor...</div></div>
+  </div>
+
+  <!-- Yoklama geçmişi -->
+  <div class="panel">
+    <div class="sec-title">📋 Son Yoklamalarım <span class="ct" id="att-count"></span></div>
+    <div id="attendance-list"><div class="empty">Yükleniyor...</div></div>
+  </div>
+
+  <div class="footer">
+    Akıllı Sınıf Otomasyonu · MDB308 Çok Disiplinli Takım Projesi
+  </div>
+</div>
+
+<script>
+  const DAY_NAMES = {{ day_names|tojson }};
+
+  // 401 → login
+  const _origFetch = window.fetch;
+  window.fetch = function(...args) {
+    return _origFetch(...args).then(r => {
+      if (r.status === 401) window.location.href = '/ogrenci/giris?next=/ogrenci';
+      return r;
+    });
+  };
+
+  function doLogout() {
+    if (!confirm('Çıkış yapmak istediğinize emin misiniz?')) return;
+    fetch('/api/student/logout', { method: 'POST' })
+      .then(() => window.location.href = '/ogrenci/giris');
+  }
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function loadAll() {
+    fetch('/api/student/dashboard').then(r => r.json()).then(d => {
+      // İstatistik
+      document.getElementById('s-checkins').textContent = d.summary.total_checkins;
+      document.getElementById('s-days').textContent = d.summary.unique_days;
+      document.getElementById('s-total').textContent = d.summary.total_events;
+
+      // Sınıf verimliliği — anlık
+      const lv = d.classroom_live;
+      document.getElementById('eff-people').textContent = lv.total_present;
+      document.getElementById('eff-zones').textContent  = lv.lit_zones + '/3';
+      document.getElementById('eff-power').textContent  = lv.lighting_power_w + ' W';
+
+      // Tasarruf — son simülasyondan
+      const sv = document.getElementById('savings-wrap');
+      if (d.last_run) {
+        const r = d.last_run;
+        let cumHtml = '';
+        if (d.cumulative.runs > 1) {
+          cumHtml = `<div class="cum-line">
+            Toplam ${d.cumulative.runs} koşmada
+            <b>${d.cumulative.savings_kwh.toFixed(1)} kWh</b> ·
+            <b style="color:#fde68a">${Math.round(d.cumulative.cost_tl)} TL</b> ·
+            <b style="color:#a5f3fc">${d.cumulative.carbon_kg.toFixed(1)} kg CO₂</b> kazanım
+          </div>`;
+        }
+        sv.innerHTML = `
+          <div class="savings-hero">
+            <div class="big">${r.savings_kwh.toFixed(1)} kWh</div>
+            <div class="pct">↓ %${r.savings_pct} enerji tasarrufu</div>
+            <div class="sub">Son haftalık simülasyon · ${esc(r.finished_at.slice(0,16))}</div>
+          </div>
+          <div class="savings-grid">
+            <div class="savings-cell cost">
+              <div class="l">💰 Maliyet</div>
+              <div class="v">${Math.round(r.cost_saved_tl)} TL</div>
+            </div>
+            <div class="savings-cell co2">
+              <div class="l">🌱 Karbon</div>
+              <div class="v">${r.carbon_saved_kg.toFixed(1)} kg CO₂</div>
+            </div>
+          </div>
+          ${cumHtml}`;
+      } else {
+        sv.innerHTML = `<div class="empty">Henüz tamamlanmış simülasyon yok.<br>
+          <span style="font-size:.66rem">Simülasyon sayfasından başlatabilirsin.</span></div>`;
+      }
+
+      // Anlık durum
+      const sw = document.getElementById('status-wrap');
+      if (d.current_active) {
+        sw.innerHTML = `
+          <div class="status-now">
+            <div class="head">💡 Şu an sınıftasın</div>
+            <div class="zone">${esc(d.current_active.zone)}</div>
+            <div class="timer">Giriş: ${esc(d.current_active.checkin_time)} · Kalan: ${d.current_active.remaining_min} dk</div>
+          </div>`;
+      } else {
+        sw.innerHTML = `
+          <div class="status-out">
+            <div style="font-size:.95rem">🚪 Şu an sınıfta değilsin</div>
+            <div style="font-size:.7rem;margin-top:4px">QR okutarak giriş yapabilirsin</div>
+          </div>`;
+      }
+
+      // Ders programı
+      const byDay = {};
+      d.weekly_schedule.forEach(c => { (byDay[c.day] = byDay[c.day] || []).push(c); });
+      let html = '';
+      let count = d.weekly_schedule.length;
+      for (let day = 0; day < 7; day++) {
+        if (!byDay[day]) continue;
+        html += `<div class="day-block"><div class="day-head">${DAY_NAMES[day]}</div>`;
+        byDay[day].forEach(c => {
+          html += `
+            <div class="class-row">
+              <div>
+                <div class="class-name">${esc(c.name)}</div>
+                <div class="class-students">${c.students} öğrenci</div>
+              </div>
+              <div class="class-time">${pad(c.start)}:00 – ${pad(c.end)}:00</div>
+            </div>`;
+        });
+        html += '</div>';
+      }
+      document.getElementById('schedule-list').innerHTML = html || '<div class="empty">Ders programı boş</div>';
+      document.getElementById('schedule-count').textContent = count + ' ders';
+
+      // Yoklama
+      const labels = { giris: 'Giriş', cikis: 'Çıkış', yenileme: 'Yenileme' };
+      const list = d.recent_attendance;
+      document.getElementById('att-count').textContent = list.length + ' kayıt';
+      if (!list.length) {
+        document.getElementById('attendance-list').innerHTML = '<div class="empty">Henüz yoklama kaydın yok</div>';
+      } else {
+        document.getElementById('attendance-list').innerHTML = list.map(e => `
+          <div class="att-row">
+            <div>
+              <span class="pill pill-${e.action}">${labels[e.action] || e.action}</span>
+              <span style="margin-left:6px">${esc(e.zone)}</span>
+            </div>
+            <div style="color:var(--muted)">${esc(e.time)}</div>
+          </div>`).join('');
+      }
+    });
+  }
+
+  loadAll();
+
+  // WebSocket — kendisi check-in yapınca veya sınıf değişince güncellensin
+  let wsConnected = false;
+  if (window.io) {
+    const sock = io();
+    sock.on('connect',    () => { wsConnected = true;  });
+    sock.on('disconnect', () => { wsConnected = false; });
+    sock.on('live_update',      () => loadAll());
+    sock.on('attendance_event', () => loadAll());
+    sock.on('run_complete',     () => loadAll());
+    sock.on('schedule_update',  () => loadAll());
+  }
+  // Fallback / uzun aralıklı tazeleme
+  setInterval(() => { if (!wsConnected) loadAll(); }, 10000);
+  setInterval(loadAll, 60000);
+</script>
+<script src="/static/notifications.js"></script>
+<script src="/static/pwa.js"></script>
+
+</body>
+</html>

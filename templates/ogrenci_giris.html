@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Öğrenci {{ 'Kayıt' if mode == 'register' else 'Girişi' }}</title>
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#0a2340" />
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="/static/icons/favicon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Akıllı Sınıf" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    .login-wrap {
+      min-height: calc(100vh - 90px);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .login-card {
+      width: 100%; max-width: 380px;
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px;
+      padding: 24px 22px;
+    }
+    .login-icon { font-size: 2.6rem; text-align: center; margin-bottom: 6px; }
+    .login-title { text-align: center; font-weight: 700; font-size: 1.05rem; margin: 0 0 4px; }
+    .login-sub { text-align: center; color: var(--muted); font-size: .75rem; margin-bottom: 16px; }
+    label { font-size: .7rem; color: var(--muted); display: block; margin: 10px 0 4px;
+            text-transform: uppercase; letter-spacing: .4px; }
+    input {
+      width: 100%; background: #0a0f1a; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: .95rem; padding: 11px 12px;
+    }
+    input:focus { outline: none; border-color: var(--primary); }
+    .err-msg {
+      background: rgba(248,113,113,.1); border: 1px solid var(--danger);
+      color: var(--danger); padding: 9px 12px; border-radius: 8px; font-size: .78rem;
+      margin-top: 14px; display: none;
+    }
+    .err-msg.show { display: block; }
+    .switch-link {
+      text-align: center; margin-top: 14px; font-size: .78rem; color: var(--muted);
+    }
+    .switch-link a { color: var(--primary); text-decoration: none; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>🎓 Öğrenci {{ 'Kayıt' if mode == 'register' else 'Girişi' }}</h1>
+  <p>Yoklama geçmişi, ders programı, profil</p>
+</div>
+
+<div class="login-wrap">
+  <form class="login-card" onsubmit="doSubmit(event)">
+    <div class="login-icon">{{ '✨' if mode == 'register' else '🔑' }}</div>
+    <h2 class="login-title">{{ 'Hesap Oluştur' if mode == 'register' else 'Giriş Yap' }}</h2>
+    <div class="login-sub">
+      {{ 'İlk kez mi geldin? Hesabını oluştur' if mode == 'register' else 'Mevcut hesabınla giriş yap' }}
+    </div>
+
+    <label>Öğrenci Numarası</label>
+    <input type="tel" inputmode="numeric" id="student_no" maxlength="15"
+           autocomplete="username" placeholder="20210001" required autofocus />
+
+    {% if mode == 'register' %}
+    <label>Ad Soyad (isteğe bağlı)</label>
+    <input type="text" id="name" maxlength="50" autocomplete="name" placeholder="Ahmet Yılmaz" />
+    {% endif %}
+
+    <label>Şifre {% if mode == 'register' %}<span style="text-transform:none;color:var(--muted)">— min 6 karakter</span>{% endif %}</label>
+    <input type="password" id="password" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}" required />
+
+    <button type="submit" class="btn-app btn-primary-app" style="margin-top:16px" id="btn-submit">
+      {{ 'Hesap Oluştur' if mode == 'register' else 'Giriş Yap' }}
+    </button>
+
+    <div id="err" class="err-msg"></div>
+
+    <div class="switch-link">
+      {% if mode == 'register' %}
+        Zaten hesabın var mı? <a href="/ogrenci/giris">Giriş yap</a>
+      {% else %}
+        Hesabın yok mu? <a href="/ogrenci/kayit">Kayıt ol</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<script>
+  const MODE = "{{ mode }}";
+  const NEXT = {{ next|tojson }};
+
+  function doSubmit(e) {
+    e.preventDefault();
+    const sno = document.getElementById('student_no').value.trim();
+    const pw  = document.getElementById('password').value;
+    const name = document.getElementById('name') ? document.getElementById('name').value.trim() : null;
+    const err = document.getElementById('err');
+    const btn = document.getElementById('btn-submit');
+    err.className = 'err-msg';
+    btn.disabled = true;
+    btn.textContent = MODE === 'register' ? 'Oluşturuluyor...' : 'Giriş yapılıyor...';
+
+    const url = MODE === 'register' ? '/api/student/register' : '/api/student/login';
+    const body = MODE === 'register'
+      ? { student_no: sno, password: pw, name: name }
+      : { student_no: sno, password: pw };
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    .then(r => r.json())
+    .then(res => {
+      btn.disabled = false;
+      btn.textContent = MODE === 'register' ? 'Hesap Oluştur' : 'Giriş Yap';
+      if (res.ok) {
+        window.location.href = NEXT || '/ogrenci';
+      } else {
+        err.textContent = res.error || 'Bir hata oluştu.';
+        err.className = 'err-msg show';
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = MODE === 'register' ? 'Hesap Oluştur' : 'Giriş Yap';
+      err.textContent = 'Bağlantı hatası.';
+      err.className = 'err-msg show';
+    });
+  }
+</script>
+<script src="/static/pwa.js"></script>
+
+</body>
+</html>
