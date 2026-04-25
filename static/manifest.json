@@ -1,0 +1,63 @@
+{
+  "name": "Akıllı Sınıf Otomasyonu",
+  "short_name": "Akıllı Sınıf",
+  "description": "IoT tabanlı akıllı sınıf enerji yönetimi — MDB308 Çok Disiplinli Takım Projesi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080c14",
+  "theme_color": "#0a2340",
+  "lang": "tr-TR",
+  "dir": "ltr",
+  "categories": ["education", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "QR Kodlar",
+      "short_name": "QR",
+      "description": "Sınıf bölgelerinin QR kodlarını göster",
+      "url": "/qr",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Canlı Panel",
+      "short_name": "Panel",
+      "description": "Sınıf doluluk ve aydınlatma paneli",
+      "url": "/panel",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Öğrenci Paneli",
+      "short_name": "Öğrenci",
+      "description": "Öğrenci profili ve yoklama geçmişi",
+      "url": "/ogrenci",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
