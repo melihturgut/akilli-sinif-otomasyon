@@ -147,15 +147,37 @@ def panel():
 
 @app.route('/api/checkin', methods=['POST'])
 def api_checkin():
-    data = request.get_json(force=True)
-    result = live.checkin(data.get('student_no'), data.get('zone'))
+    """3 katmanli kontrolden gecen check-in.
+    - Login zorunlu (session['student'])
+    - student_no oturumdan alinir, body'den DEGIL (sahtekarlik onlenir)
+    - Konum (lat, lng) body'den alinir, sunucu mesafeyi dogrular
+    """
+    data = request.get_json(force=True) or {}
+
+    # Katman 1: Login kontrolu
+    if 'student' not in session:
+        return jsonify({
+            'ok': False,
+            'error': 'Yoklama atmak için önce öğrenci hesabınıza giriş yapın.',
+            'need_login': True,
+            'login_url': '/ogrenci/giris',
+        }), 401
+
+    # student_no oturumdan zorla — body'den gelirse yok say
+    student_no = session['student']
+    zone = data.get('zone')
+    lat = data.get('lat')
+    lng = data.get('lng')
+
+    result = live.checkin(student_no, zone, lat=lat, lng=lng, authenticated=True)
     return jsonify(result)
 
 
 @app.route('/api/checkout', methods=['POST'])
 def api_checkout():
-    data = request.get_json(force=True)
-    return jsonify(live.checkout(data.get('student_no')))
+    if 'student' not in session:
+        return jsonify({'ok': False, 'error': 'Giriş gerekli.'}), 401
+    return jsonify(live.checkout(session['student']))
 
 
 @app.route('/api/live')
@@ -387,6 +409,48 @@ def api_schedule_delete(cid):
 @login_required
 def api_schedule_toggle(cid):
     return jsonify(schedule_mgr.toggle(cid))
+
+
+# --- Sinif konumu (yoklama dogrulama icin) ---
+
+@app.route('/api/settings/classroom-location', methods=['GET'])
+def api_get_classroom_location():
+    """Mevcut sinif konumunu dondur (herkese acik, frontend ihtiyaci icin)."""
+    lat = db.get_setting('classroom_lat')
+    lng = db.get_setting('classroom_lng')
+    max_d = db.get_setting('max_distance_m') or 100
+    return jsonify({
+        'lat': float(lat) if lat else None,
+        'lng': float(lng) if lng else None,
+        'max_distance_m': float(max_d),
+        'is_set': lat is not None and lng is not None,
+    })
+
+
+@app.route('/api/settings/classroom-location', methods=['POST'])
+@login_required
+def api_set_classroom_location():
+    """Hoca paneli — su anki GPS koordinatini sinif konumu olarak kaydet."""
+    data = request.get_json(force=True) or {}
+    try:
+        lat = float(data['lat'])
+        lng = float(data['lng'])
+        max_d = float(data.get('max_distance_m', 100))
+    except (KeyError, ValueError, TypeError):
+        return jsonify({'ok': False, 'error': 'Geçersiz konum verisi.'}), 400
+    db.set_setting('classroom_lat', lat)
+    db.set_setting('classroom_lng', lng)
+    db.set_setting('max_distance_m', max_d)
+    return jsonify({'ok': True, 'lat': lat, 'lng': lng, 'max_distance_m': max_d})
+
+
+@app.route('/api/settings/classroom-location', methods=['DELETE'])
+@login_required
+def api_clear_classroom_location():
+    """Sinif konumu ayarini temizle (konum kontrolu pasif olur)."""
+    db.set_setting('classroom_lat', None)
+    db.set_setting('classroom_lng', None)
+    return jsonify({'ok': True})
 
 
 # --- Veritabanı Sorguları (geçmiş yoklama + enerji koşuları)

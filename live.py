@@ -3,9 +3,11 @@
 # Sunucu restart olsa aktif girisler ve gecmis DB'de.
 import threading
 import time
+import math
 import db
 import realtime
 import notifications
+from schedule_mgr import schedule_mgr
 
 ZONES = {
     'on':   {'name': 'Ön Bölge',   'desc': '1-3. Sıralar'},
@@ -13,28 +15,112 @@ ZONES = {
     'arka': {'name': 'Arka Bölge', 'desc': '7-9. Sıralar'},
 }
 
-STUDY_DURATION = 3600   # 1 saatlik etüt sayacı (rapor 2.3)
-ZONE_LIGHT_W = 133      # Bölge başına aydınlatma gücü (W)
+STUDY_DURATION = 3600       # 1 saatlik etüt sayacı (rapor 2.3)
+ZONE_LIGHT_W = 133          # Bölge başına aydınlatma gücü (W)
+CLASS_GRACE_MIN = 15        # Ders basladiktan sonra gec giris toleransi (dk)
+EARLY_GRACE_MIN = 10        # Ders baslamadan onceki erken giris penceresi (dk)
+DEFAULT_MAX_DISTANCE_M = 100  # GPS konum yaricapi (m)
+
+
+def _haversine_m(lat1, lon1, lat2, lon2):
+    """Iki GPS noktasi arasindaki mesafeyi metre olarak hesapla."""
+    R = 6371000
+    p1 = math.radians(lat1)
+    p2 = math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp/2)**2 + math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+    return 2 * R * math.asin(math.sqrt(a))
+
+
+def _check_schedule(now_ts):
+    """Aktif ders var mi kontrol. Donus: (in_class, class_or_None, mode_str)."""
+    lt = time.localtime(now_ts)
+    day = lt.tm_wday
+    hour = lt.tm_hour
+    minute = lt.tm_min
+
+    cls = schedule_mgr.current_class(day, hour)
+    if cls:
+        mins_into = (hour - cls['start']) * 60 + minute
+        return True, cls, ('gec' if mins_into > CLASS_GRACE_MIN else 'normal')
+
+    # Erken giris penceresi
+    for c in schedule_mgr.list_all():
+        if not c.get('active', True) or c['day'] != day:
+            continue
+        if c['start'] - 1 == hour and (60 - minute) <= EARLY_GRACE_MIN:
+            return True, c, 'erken'
+        if c['start'] == hour and minute < EARLY_GRACE_MIN:
+            return True, c, 'erken'
+    return False, None, 'etut'
+
+
+def _check_location(student_lat, student_lng):
+    """Sinif konumu ayarliysa mesafe kontrolu. Donus: (ok, dist_m, error)."""
+    cls_lat = db.get_setting('classroom_lat')
+    cls_lng = db.get_setting('classroom_lng')
+    if not cls_lat or not cls_lng:
+        return True, None, None  # Konum ayarli degil, kontrolu atla
+    if student_lat is None or student_lng is None:
+        return False, None, 'Konum bilgisi gerekli. Tarayıcıdan konum izni verin.'
+    try:
+        dist = _haversine_m(float(cls_lat), float(cls_lng),
+                             float(student_lat), float(student_lng))
+        max_dist = float(db.get_setting('max_distance_m') or DEFAULT_MAX_DISTANCE_M)
+        if dist > max_dist:
+            return False, dist, f'Sınıfa çok uzaktasınız (~{int(dist)}m). Sadece sınıf içinden yoklama atılabilir.'
+        return True, dist, None
+    except (ValueError, TypeError):
+        return False, None, 'Konum doğrulanamadı.'
 
 
 class LiveClassroom:
     def __init__(self):
         self.lock = threading.Lock()
 
-    def checkin(self, student_no, zone):
+    def checkin(self, student_no, zone, lat=None, lng=None, authenticated=False):
+        """3 katmanli kontrol:
+        1. Hesap girisi (authenticated=True olmali)
+        2. Ders saati (aktif ders veya etut)
+        3. GPS konumu (sinif yariçapinda)
+        """
         student_no = str(student_no or '').strip()
         if not student_no.isdigit() or not (5 <= len(student_no) <= 15):
-            return {'ok': False, 'error': 'Geçersiz öğrenci numarası. Sadece rakam giriniz.'}
+            return {'ok': False, 'error': 'Geçersiz öğrenci numarası.'}
         if zone not in ZONES:
             return {'ok': False, 'error': 'Geçersiz bölge kodu.'}
+
+        # KATMAN 1: Login zorunlu
+        if not authenticated:
+            return {'ok': False, 'error': 'Yoklama için hesabınıza giriş yapmanız gerekir.',
+                    'need_login': True}
+
+        # KATMAN 2: Ders saati kontrolu
+        now = time.time()
+        in_class, current_cls, sched_mode = _check_schedule(now)
+        class_id = current_cls['id'] if current_cls else None
+        # Ders saatleri disinda etut moduna izin ver (mode='etut' olarak isaretle)
+        # Hoca isterse "strict" yapilabilir ama default esnek
+
+        # KATMAN 3: GPS konum kontrolu (sinif konumu ayarliysa)
+        loc_ok, distance, loc_err = _check_location(lat, lng)
+        if not loc_ok:
+            return {'ok': False, 'error': loc_err, 'need_location': True}
 
         with self.lock:
             db.cleanup_expired()
             renewed = db.has_checkin(student_no)
-            now = time.time()
             expires_at = now + STUDY_DURATION
             db.upsert_checkin(student_no, zone, now, expires_at)
-            db.log_attendance(student_no, zone, 'yenileme' if renewed else 'giris', now)
+            db.log_attendance(
+                student_no, zone,
+                'yenileme' if renewed else 'giris',
+                now,
+                class_id=class_id,
+                latitude=lat, longitude=lng,
+                mode=sched_mode,
+            )
             result = {
                 'ok': True,
                 'renewed': renewed,
@@ -42,15 +128,16 @@ class LiveClassroom:
                 'zone': zone,
                 'zone_name': ZONES[zone]['name'],
                 'expires_at': expires_at,
+                'class_name': current_cls['name'] if current_cls else None,
+                'mode': sched_mode,
+                'distance_m': int(distance) if distance is not None else None,
             }
 
-        # Lock dışında yayınla
         realtime.emit('live_update', self.get_state())
         realtime.emit('attendance_event', {
             'action': 'yenileme' if renewed else 'giris',
             'student_no': student_no, 'zone': ZONES[zone]['name'],
         })
-        # Öğrenciye kişisel bildirim
         zone_name = ZONES[zone]['name']
         if renewed:
             notifications.notify_student(student_no,
@@ -58,9 +145,16 @@ class LiveClassroom:
                 f'{zone_name} · Etüt süreniz 1 saat uzatıldı.',
                 'info', icon='⏱️')
         else:
+            mode_label = {
+                'normal': 'ders saatinde',
+                'gec':    'derse geç giriş',
+                'erken':  'derse erken giriş',
+                'etut':   'etüt modu',
+            }.get(sched_mode, '')
+            cls_part = f' ({current_cls["name"]})' if current_cls else ''
             notifications.notify_student(student_no,
                 'Yoklamanız alındı',
-                f'{zone_name}\'e başarıyla giriş yaptınız.',
+                f'{zone_name} · {mode_label}{cls_part}',
                 'success', icon='✓')
         return result
 

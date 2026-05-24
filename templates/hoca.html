@@ -134,6 +134,29 @@
   <!-- Ders Listesi -->
   <div id="list-wrap"></div>
 
+  <!-- Sınıf Konumu Ayarı (yoklama dogrulama icin) -->
+  <div class="panel" style="margin-top:20px">
+    <div style="font-weight:700;font-size:.9rem;margin-bottom:8px">
+      📍 Sınıf Konumu (Yoklama Doğrulama)
+    </div>
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:12px">
+      Konum ayarlanırsa öğrenciler sadece sınıfa yakın iken yoklama atabilir.
+      Boş bırakırsanız konum kontrolü devre dışı kalır.
+    </div>
+    <div id="loc-info" style="font-size:.78rem;margin-bottom:10px">Yükleniyor...</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn-app btn-primary-app" style="flex:1;min-width:140px" onclick="setLocation()">
+        📍 Bu Cihazın Konumunu Sınıf Olarak Ayarla
+      </button>
+      <button class="btn-app btn-ghost-app" style="flex:1;min-width:120px" onclick="clearLocation()">
+        🗑 Konum Ayarını Sil
+      </button>
+    </div>
+    <div style="font-size:.7rem;color:var(--muted);margin-top:8px">
+      ⚠️ Bu işlemi sınıfın içindeyken yapın. Yarıçap: 100 metre.
+    </div>
+  </div>
+
   <div class="footer">
     Anlık değişiklik için ışık simgesine basarak dersi geçici olarak iptal edebilirsiniz.
   </div>
@@ -313,11 +336,60 @@
   }
 
   loadList();
+  loadLocation();
 
   // Başka bir kullanıcı program değiştirirse senkronize ol
   if (window.io) {
     const sock = io();
     sock.on('schedule_update', () => loadList());
+  }
+
+  // --- Sinif konumu yonetimi ---
+  function loadLocation() {
+    fetch('/api/settings/classroom-location').then(r => r.json()).then(d => {
+      const el = document.getElementById('loc-info');
+      if (d.is_set) {
+        el.innerHTML = `<span style="color:var(--success)">✓ Ayarlı:</span>
+          ${d.lat.toFixed(5)}, ${d.lng.toFixed(5)}
+          <span style="color:var(--muted)">(${d.max_distance_m}m yarıçap)</span>`;
+      } else {
+        el.innerHTML = '<span style="color:var(--warning)">⚠ Henüz ayarlanmamış</span> - konum doğrulama pasif';
+      }
+    });
+  }
+
+  function setLocation() {
+    if (!navigator.geolocation) {
+      toast('Tarayıcı konum desteklemiyor.', true);
+      return;
+    }
+    toast('Konum alınıyor...');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        fetch('/api/settings/classroom-location', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            max_distance_m: 100,
+          })
+        }).then(r => r.json()).then(res => {
+          if (res.ok) {
+            toast('Sınıf konumu kaydedildi');
+            loadLocation();
+          } else { toast(res.error || 'Hata', true); }
+        });
+      },
+      (err) => toast('Konum alınamadı: ' + err.message, true),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  function clearLocation() {
+    if (!confirm('Konum ayarını silmek istediğinize emin misiniz? Konum kontrolü kapanacak.')) return;
+    fetch('/api/settings/classroom-location', { method: 'DELETE' })
+      .then(() => { toast('Konum ayarı silindi'); loadLocation(); });
   }
 </script>
 <script src="/static/notifications.js"></script>

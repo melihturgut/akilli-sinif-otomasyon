@@ -84,19 +84,39 @@ def init():
         );
         CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_type, user_id);
         CREATE INDEX IF NOT EXISTS idx_notif_read ON notifications(read);
+
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key   TEXT PRIMARY KEY,
+            value TEXT
+        );
         """)
+        # Eski attendance tablosuna yeni kolonlar (varsa atla)
+        for col_def in [
+            "class_id INTEGER",
+            "latitude REAL",
+            "longitude REAL",
+            "mode TEXT",
+        ]:
+            try:
+                col_name = col_def.split()[0]
+                c.execute(f"ALTER TABLE attendance ADD COLUMN {col_def}")
+            except Exception:
+                pass
         c.commit()
         c.close()
 
 
 # --- Yoklama
 
-def log_attendance(student_no, zone, action, ts=None):
+def log_attendance(student_no, zone, action, ts=None,
+                    class_id=None, latitude=None, longitude=None, mode=None):
     ts = ts if ts is not None else time.time()
     with _lock:
         c = _conn()
-        c.execute("INSERT INTO attendance (student_no, zone, action, timestamp) VALUES (?,?,?,?)",
-                  (student_no, zone, action, ts))
+        c.execute("""INSERT INTO attendance
+            (student_no, zone, action, timestamp, class_id, latitude, longitude, mode)
+            VALUES (?,?,?,?,?,?,?,?)""",
+            (student_no, zone, action, ts, class_id, latitude, longitude, mode))
         c.commit()
         c.close()
 
@@ -350,6 +370,26 @@ def mark_all_read(user_type, user_id):
         affected = cur.rowcount
         c.close()
         return affected
+
+
+# --- Ayarlar (sinif konumu, esik degerler vb.)
+
+def set_setting(key, value):
+    with _lock:
+        c = _conn()
+        c.execute("""INSERT INTO app_settings (key, value) VALUES (?,?)
+                     ON CONFLICT(key) DO UPDATE SET value=excluded.value""",
+                  (key, str(value) if value is not None else None))
+        c.commit()
+        c.close()
+
+
+def get_setting(key, default=None):
+    with _lock:
+        c = _conn()
+        r = c.execute("SELECT value FROM app_settings WHERE key=?", (key,)).fetchone()
+        c.close()
+        return r['value'] if r else default
 
 
 def list_all_hoca_usernames():

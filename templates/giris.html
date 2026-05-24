@@ -27,48 +27,99 @@
       font-size: .9rem;
     }
     .big-ico { font-size: 3rem; }
-    .field-label { font-size: .78rem; color: var(--muted); margin-bottom: 6px; display: block; }
+    .info-line { font-size: .75rem; color: var(--muted); margin-top: 4px; }
     .result-box { border-radius: 12px; padding: 16px; margin-top: 14px; text-align: center; }
     .result-ok  { background: rgba(52,211,153,.1); border: 1px solid var(--success); }
     .result-err { background: rgba(248,113,113,.1); border: 1px solid var(--danger); }
     .hidden { display: none; }
-    .info-line { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+
+    .student-card {
+      background: #0a0f1a; border: 1px solid rgba(56,189,248,.3);
+      border-radius: 10px; padding: 10px 12px; margin: 12px 0;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--primary); color: #021;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1rem;
+    }
+    .stu-name { font-weight: 700; font-size: .9rem; }
+    .stu-no { font-size: .7rem; color: var(--muted); }
+
+    .layer-checks {
+      background: #0a0f1a; border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px; margin: 10px 0;
+      font-size: .75rem;
+    }
+    .check-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+    .check-ico { width: 16px; text-align: center; }
+    .check-ok  { color: var(--success); }
+    .check-err { color: var(--danger); }
+    .check-wait { color: var(--warning); }
   </style>
 </head>
 <body>
 
 <div class="app-header">
-  <h1><i></i>🚪 Akıllı Sınıf Girişi</h1>
-  <p>QR kod ile bölgesel aydınlatma &amp; dijital yoklama</p>
+  <h1>🚪 Akıllı Sınıf Girişi</h1>
+  <p>QR kod ile bölgesel aydınlatma · dijital yoklama</p>
 </div>
 
 <div class="wrap">
 
-  <!-- Giriş Formu -->
-  <div id="form-view">
+  <!-- Login zorunlu uyarisi -->
+  <div id="auth-required" class="panel hidden" style="text-align:center">
+    <div class="big-ico">🔒</div>
+    <h3 style="font-weight:700;margin:8px 0;font-size:1.05rem">Giriş Yapın</h3>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px">
+      Sahte yoklamayı önlemek için yoklama sadece kendi hesabınızdan atılabilir.
+    </p>
+    <a href="/ogrenci/giris?next=/giris%3Fbolge%3D{{ zone }}" class="btn-app btn-primary-app" style="text-decoration:none;display:inline-block;padding:12px 28px">
+      🔑 Hesap ile Giriş
+    </a>
+    <div class="info-line" style="margin-top:8px">
+      Hesabın yok mu? <a href="/ogrenci/kayit?next=/giris%3Fbolge%3D{{ zone }}" style="color:var(--primary)">Kayıt ol</a>
+    </div>
+  </div>
+
+  <!-- Asil giriş formu -->
+  <div id="checkin-view" class="hidden">
     <div class="panel" style="text-align:center">
       <div class="big-ico">📍</div>
       <div class="zone-tag">{{ zone_name }}</div>
       <div class="info-line">{{ zone_desc }}</div>
 
-      <hr style="border-color:var(--border);margin:16px 0" />
-
-      <label class="field-label">Öğrenci Numaranız</label>
-      <input type="tel" inputmode="numeric" class="input-app mb-3" id="student-no"
-             placeholder="20210001" maxlength="15" autocomplete="off" />
-      <div id="auto-fill-hint" class="info-line" style="display:none;color:var(--success)">
-        ✓ Hesabınla otomatik dolduruldu
+      <!-- Ogrenci karti -->
+      <div class="student-card">
+        <div class="avatar" id="avatar">?</div>
+        <div style="text-align:left;flex:1">
+          <div class="stu-name" id="stu-name">—</div>
+          <div class="stu-no" id="stu-no">—</div>
+        </div>
       </div>
 
-      <button class="btn-app btn-primary-app mt-2" id="btn-checkin" onclick="doCheckin()">
-        ✓ Giriş Yap &amp; Yoklama Al
+      <!-- Katman kontrolleri -->
+      <div class="layer-checks">
+        <div class="check-item" id="chk-auth">
+          <span class="check-ico check-ok">✓</span>
+          <span>Hesap girişi doğrulandı</span>
+        </div>
+        <div class="check-item" id="chk-schedule">
+          <span class="check-ico check-wait">⏳</span>
+          <span>Ders saati kontrol ediliyor...</span>
+        </div>
+        <div class="check-item" id="chk-location">
+          <span class="check-ico check-wait">⏳</span>
+          <span>Konumunuz alınıyor...</span>
+        </div>
+      </div>
+
+      <button class="btn-app btn-primary-app" id="btn-checkin" onclick="doCheckin()" disabled>
+        ⏳ Kontroller bekleniyor...
       </button>
-      <div class="info-line mt-2">
-        Giriş yapıldığında bu bölgenin aydınlatması açılır ve 1 saatlik etüt
-        zamanlayıcısı başlar.
-      </div>
-      <div class="info-line mt-2" id="account-line" style="font-size:.7rem">
-        <a href="/ogrenci" style="color:var(--primary);text-decoration:none">🎓 Öğrenci Paneli</a>
+      <div class="info-line">
+        Giriş yapıldığında bu bölgenin aydınlatması açılır ve yoklamanız alınır.
       </div>
     </div>
   </div>
@@ -82,44 +133,121 @@
         <div id="result-msg" class="info-line" style="font-size:.82rem;margin-top:8px"></div>
       </div>
       <button class="btn-app btn-danger-app mt-3 hidden" id="btn-checkout" onclick="doCheckout()">
-        Çıkış Yap (Aydınlatmayı Kapat)
+        Çıkış Yap
       </button>
-      <button class="btn-app btn-ghost-app mt-2" onclick="resetForm()">
-        Yeni Giriş
+      <button class="btn-app btn-ghost-app mt-2" onclick="location.reload()">
+        Yeni İşlem
       </button>
     </div>
   </div>
 
   <div class="footer">
-    Akıllı Sınıf Otomasyonu · MDB308 Çok Disiplinli Takım Projesi
+    Akıllı Sınıf Otomasyonu · 3 katmanlı kimlik doğrulama
   </div>
 </div>
 
 <script>
   const ZONE = "{{ zone }}";
-  let lastStudent = null;
+  let currentStudent = null;
+  let userLocation = null;
+
+  // Sayfayi yukle
+  init();
+
+  async function init() {
+    // 1) Login kontrolu
+    const meRes = await fetch('/api/student/me').then(r => r.json()).catch(() => ({student: null}));
+    if (!meRes.student) {
+      document.getElementById('auth-required').classList.remove('hidden');
+      return;
+    }
+    currentStudent = meRes.student;
+    document.getElementById('checkin-view').classList.remove('hidden');
+
+    // Ogrenci karti
+    const name = currentStudent.name || currentStudent.student_no;
+    document.getElementById('stu-name').textContent = name;
+    document.getElementById('stu-no').textContent = 'Öğrenci No: ' + currentStudent.student_no;
+    document.getElementById('avatar').textContent = name.charAt(0).toUpperCase();
+
+    // 2) Ders saati kontrolu (asagidaki check sadece bilgilendirme - asil server'da)
+    updateScheduleCheck();
+
+    // 3) Konum alma
+    requestLocation();
+  }
+
+  function updateScheduleCheck() {
+    const el = document.getElementById('chk-schedule');
+    const now = new Date();
+    const day = (now.getDay() + 6) % 7; // 0=Pzt
+    // Bu sadece bilgilendirme - tam dogrulama backend'de
+    el.innerHTML = '<span class="check-ico check-ok">✓</span><span>Ders saati: ' +
+                   ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][day] + ' ' +
+                   String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + '</span>';
+    tryEnable();
+  }
+
+  function requestLocation() {
+    const el = document.getElementById('chk-location');
+    if (!navigator.geolocation) {
+      el.innerHTML = '<span class="check-ico check-err">✗</span><span>Tarayıcı konum desteklemiyor</span>';
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const acc = Math.round(pos.coords.accuracy);
+        el.innerHTML = `<span class="check-ico check-ok">✓</span><span>Konum alındı (±${acc}m doğruluk)</span>`;
+        tryEnable();
+      },
+      (err) => {
+        el.innerHTML = '<span class="check-ico check-err">✗</span><span>Konum izni reddedildi</span>';
+        // Butonu yine de etkinlestir, sunucu nihai karari versin
+        // (Bazi tarayicilarda konum yok, sunucu konum ayarli degilse atlar)
+        tryEnable(true);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  }
+
+  function tryEnable(forceEnable = false) {
+    const btn = document.getElementById('btn-checkin');
+    if (forceEnable || userLocation) {
+      btn.disabled = false;
+      btn.textContent = '✓ Giriş Yap & Yoklama Al';
+    }
+  }
 
   function doCheckin() {
-    const no = document.getElementById('student-no').value.trim();
-    if (!no) { alert('Lütfen öğrenci numaranızı girin.'); return; }
     const btn = document.getElementById('btn-checkin');
     btn.disabled = true;
+    btn.textContent = 'Gönderiliyor...';
+
+    const body = { zone: ZONE };
+    if (userLocation) {
+      body.lat = userLocation.lat;
+      body.lng = userLocation.lng;
+    }
 
     fetch('/api/checkin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ student_no: no, zone: ZONE })
+      body: JSON.stringify(body)
     })
-    .then(r => r.json())
-    .then(res => {
+    .then(r => r.json().then(j => ({status: r.status, body: j})))
+    .then(({status, body}) => {
+      showResult(body);
+    })
+    .catch(() => {
       btn.disabled = false;
-      showResult(res);
-    })
-    .catch(() => { btn.disabled = false; alert('Bağlantı hatası.'); });
+      btn.textContent = '✓ Giriş Yap & Yoklama Al';
+      alert('Bağlantı hatası.');
+    });
   }
 
   function showResult(res) {
-    document.getElementById('form-view').classList.add('hidden');
+    document.getElementById('checkin-view').classList.add('hidden');
     document.getElementById('result-view').classList.remove('hidden');
     const box = document.getElementById('result-box');
     const ico = document.getElementById('result-ico');
@@ -128,78 +256,49 @@
     const btnOut = document.getElementById('btn-checkout');
 
     if (res.ok) {
-      lastStudent = res.student_no;
       box.className = 'result-box result-ok';
       ico.textContent = '✅';
       const t = new Date(res.expires_at * 1000);
       const hh = String(t.getHours()).padStart(2,'0');
       const mm = String(t.getMinutes()).padStart(2,'0');
-      title.textContent = res.renewed ? 'Süre Yenilendi!' : 'Giriş Başarılı!';
-      msg.innerHTML = `Öğrenci <b>${res.student_no}</b> · <b>${res.zone_name}</b><br>`
+      title.textContent = res.renewed ? 'Süre Yenilendi!' : 'Yoklamanız Alındı!';
+      const modeText = {
+        normal: '<span style="color:var(--success)">✓ Ders saatinde</span>',
+        gec:    '<span style="color:var(--warning)">⚠ Derse geç giriş</span>',
+        erken:  '<span style="color:var(--success)">↗ Derse erken giriş</span>',
+        etut:   '<span style="color:var(--primary)">📖 Etüt modu (ders dışı)</span>',
+      }[res.mode] || '';
+      const classInfo = res.class_name ? ' · ' + res.class_name : '';
+      const distInfo = res.distance_m !== null && res.distance_m !== undefined
+        ? `📍 Sınıftan ${res.distance_m}m uzaklıkta<br>` : '';
+      msg.innerHTML = `<b>${res.zone_name}</b>${classInfo}<br>`
+        + modeText + '<br>'
+        + distInfo
         + `💡 Bölge aydınlatması açıldı<br>`
-        + `📋 Yoklamanız alındı<br>`
-        + `⏱️ Etüt süresi: <b>${hh}:${mm}</b>'e kadar`;
+        + `⏱️ Süre: <b>${hh}:${mm}</b>'e kadar`;
       btnOut.classList.remove('hidden');
     } else {
       box.className = 'result-box result-err';
       ico.textContent = '⚠️';
-      title.textContent = 'Giriş Yapılamadı';
+      title.textContent = 'Yoklama Reddedildi';
       msg.textContent = res.error || 'Bilinmeyen hata.';
+      if (res.need_login) {
+        setTimeout(() => location.href = '/ogrenci/giris?next=/giris%3Fbolge%3D' + ZONE, 2000);
+      }
       btnOut.classList.add('hidden');
     }
   }
 
   function doCheckout() {
-    if (!lastStudent) return;
     fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ student_no: lastStudent })
+      body: JSON.stringify({})
     })
     .then(r => r.json())
-    .then(res => {
-      const box = document.getElementById('result-box');
-      const ico = document.getElementById('result-ico');
-      const title = document.getElementById('result-title');
-      const msg = document.getElementById('result-msg');
-      document.getElementById('btn-checkout').classList.add('hidden');
-      if (res.ok) {
-        box.className = 'result-box result-ok';
-        ico.textContent = '👋';
-        title.textContent = 'Çıkış Yapıldı';
-        msg.textContent = 'Bölgede başka kimse yoksa aydınlatma otomatik kapanır.';
-      } else {
-        msg.textContent = res.error || 'Çıkış yapılamadı.';
-      }
-    });
+    .then(() => location.reload());
   }
-
-  function resetForm() {
-    document.getElementById('student-no').value = '';
-    document.getElementById('result-view').classList.add('hidden');
-    document.getElementById('form-view').classList.remove('hidden');
-  }
-
-  document.getElementById('student-no').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doCheckin();
-  });
-
-  // Hesap girişi varsa öğrenci numarasını otomatik doldur
-  fetch('/api/student/me').then(r => r.json()).then(d => {
-    if (d.student && d.student.student_no) {
-      document.getElementById('student-no').value = d.student.student_no;
-      document.getElementById('auto-fill-hint').style.display = 'block';
-      document.getElementById('account-line').innerHTML =
-        '👋 Hoş geldin <b>' + (d.student.name || d.student.student_no) + '</b> · ' +
-        '<a href="/ogrenci" style="color:var(--primary);text-decoration:none">Panelime Git</a>';
-    } else {
-      document.getElementById('account-line').innerHTML =
-        'Hesabın yok mu? <a href="/ogrenci/kayit" style="color:var(--primary);text-decoration:none">Kayıt ol</a> · ' +
-        '<a href="/ogrenci/giris" style="color:var(--primary);text-decoration:none">Giriş yap</a>';
-    }
-  }).catch(() => {});
 </script>
 <script src="/static/pwa.js"></script>
-
 </body>
 </html>
