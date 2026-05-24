@@ -1,0 +1,6 @@
+# Binary dosyalar - git autocrlf bunlara dokunmasin
+*.ttf binary
+*.png binary
+*.pdf binary
+*.xlsx binary
+*.db binary
