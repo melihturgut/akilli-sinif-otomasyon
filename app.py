@@ -16,6 +16,11 @@ import time
 import socket
 import secrets
 
+# Sunucu saatini Istanbul'a (UTC+3) zorla - Render Linux varsayilan UTC kullaniyor
+os.environ.setdefault('TZ', 'Europe/Istanbul')
+if hasattr(time, 'tzset'):
+    time.tzset()
+
 # Veritabanını başlat (kalıcı yoklama + enerji koşusu kaydı + kullanıcılar)
 db.init()
 auth.init_default_admin()
