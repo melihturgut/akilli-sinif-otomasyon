@@ -469,6 +469,16 @@ def api_db_stats():
     return jsonify(db.attendance_stats())
 
 
+@app.route('/api/db/info')
+def api_db_info():
+    """Hangi DB kullaniliyor — Turso mu lokal SQLite mi."""
+    return jsonify({
+        'using_turso': db.USE_TURSO,
+        'has_turso_url': bool(os.environ.get('TURSO_DATABASE_URL')),
+        'has_turso_token': bool(os.environ.get('TURSO_AUTH_TOKEN')),
+    })
+
+
 @app.route('/api/db/attendance')
 def api_db_attendance():
     limit = min(int(request.args.get('limit', 100)), 500)
