@@ -278,8 +278,69 @@ def generate_full_report():
     story.append(Paragraph(
         "Bu rapor, IoT tabanlı akıllı sınıf enerji yönetim sisteminin "
         "performans göstergelerini, yoklama analizlerini ve doluluk-tüketim "
-        "korelasyonlarını sunar.",
+        "korelasyonlarını sunar. Sayfa 2'de raporda kullanılan terimlerin "
+        "açıklamaları bulunmaktadır.",
         styles['muted']))
+    story.append(PageBreak())
+
+    # ---
+    # TERIMLER SOZLUGU
+    # ---
+    story.append(Paragraph("Terimler ve Tanımlar", styles['h1']))
+    story.append(Paragraph(
+        "Rapor boyunca kullanılan teknik terimlerin kısa açıklamaları:",
+        styles['normal']))
+    story.append(Spacer(1, 6*mm))
+
+    terms = [
+        ('Toplam Olay',
+         'Sisteme yapılan tüm yoklama hareketleri: giriş, çıkış ve süre yenileme kayıtlarının toplamı.'),
+        ('Benzersiz Öğrenci',
+         'Sisteme en az bir kez giriş yapmış farklı öğrenci sayısı. Aynı öğrenci tekrar giriş yapsa bile 1 sayılır.'),
+        ('Bugünkü Giriş',
+         'Bugün (00:00\'dan itibaren) QR ile sınıfa giriş yapan kişi sayısı.'),
+        ('Bazhat (Baseline)',
+         'Otomasyon hiç olmasaydı sınıfta tüketilecek olan teorik enerji miktarı. Karşılaştırma referansı.'),
+        ('Otomasyonlu Tüketim',
+         'Akıllı sistemimiz aktifken gerçekleşen enerji tüketimi. Doluluk yoksa cihazlar kapatılır.'),
+        ('Tasarruf (kWh)',
+         'Bazhat tüketimi ile otomasyonlu tüketim arasındaki fark. Kazanılan elektrik miktarı.'),
+        ('Tasarruf Yüzdesi',
+         '(Bazhat − Otomasyonlu) / Bazhat × 100. Sistemin verimlilik oranı.'),
+        ('Maliyet Kazancı (TL)',
+         'Tasarruf edilen elektrik × birim fiyat (4.5 TL/kWh — Türkiye ortalaması).'),
+        ('Karbon Azaltımı (kg CO₂)',
+         'Tasarruf edilen elektrik × emisyon faktörü (0.4 kg CO₂/kWh — TR ortalaması).'),
+        ('Doluluk Oranı',
+         'Bir dersin gerçek katılımı / beklenen öğrenci sayısı × 100. Ders programı optimizasyonunda kullanılır.'),
+        ('Beklenen Öğrenci',
+         'Ders programında o derse kayıtlı / katılması beklenen öğrenci sayısı.'),
+        ('Aktif Ders',
+         'Hoca tarafından iptal edilmemiş, programda canlı görünen ders.'),
+        ('Etüt Modu',
+         'Ders saatleri dışında öğrencilerin QR ile sınıfı manuel açabildiği 1 saatlik zamanlanmış kullanım.'),
+        ('Bölgesel Aydınlatma',
+         'Sınıfın 3 bölgesinin (Ön, Orta, Arka) bağımsız aydınlatması. Sadece dolu bölgenin ışığı yanar.'),
+        ('Hibrit PIR + Ultrasonik',
+         'İki sensörün birlikte kullanımı. PIR hareketi, ultrasonik mesafeyi ölçer. Durağan öğrencilerde de doluluk algılanır.'),
+        ('Kapasite Kullanım Oranı',
+         'Sınıfın belirli bir zamanda toplam kapasitesine göre ne kadar dolu olduğu. Mekan yönetimi metriği.'),
+    ]
+
+    rows = [[Paragraph(f'<b>{name}</b>', styles['normal']),
+             Paragraph(desc, styles['normal'])] for name, desc in terms]
+    t = Table(rows, colWidths=[42*mm, 130*mm])
+    t.setStyle(TableStyle([
+        ('FONTNAME',   (0,0), (-1,-1), BASE_FONT),
+        ('FONTSIZE',   (0,0), (-1,-1), 9),
+        ('TEXTCOLOR',  (0,0), (0,-1), C_PRIMARY),
+        ('LINEBELOW',  (0,0), (-1,-1), 0.3, C_BORDER),
+        ('TOPPADDING',    (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BACKGROUND', (0,0), (-1,-1), colors.white),
+    ]))
+    story.append(t)
     story.append(PageBreak())
 
     # ---

@@ -65,4 +65,18 @@
     const bar = document.getElementById('pwa-install-bar');
     if (bar) bar.remove();
   });
+
+  // Tooltip mobil dokunma destegi
+  // Hover desktop'ta zaten CSS ile calisiyor, mobilde click ile acalim
+  document.addEventListener('click', (e) => {
+    const tip = e.target.closest('.has-tip');
+    // Disari tiklayinca acik olanlari kapat
+    document.querySelectorAll('.has-tip.tip-open').forEach(el => {
+      if (el !== tip) el.classList.remove('tip-open');
+    });
+    if (tip) {
+      e.stopPropagation();
+      tip.classList.toggle('tip-open');
+    }
+  });
 })();

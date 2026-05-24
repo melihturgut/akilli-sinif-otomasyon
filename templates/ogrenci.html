@@ -148,15 +148,27 @@
   <div class="stats">
     <div class="stat-card">
       <div class="v" style="color:var(--success)" id="s-checkins">—</div>
-      <div class="l">Toplam Giriş</div>
+      <div class="l">
+        <span class="has-tip" data-tip="Sınıfa kaç kez QR ile giriş yaptığın. Her giriş 1 sayılır.">
+          Toplam Giriş <i class="tip-ico">i</i>
+        </span>
+      </div>
     </div>
     <div class="stat-card">
       <div class="v" style="color:var(--primary)" id="s-days">—</div>
-      <div class="l">Farklı Gün</div>
+      <div class="l">
+        <span class="has-tip" data-tip="Farklı gün sayısı — örn 3 kez Pazartesi ve 2 kez Salı geldiysen değer 2 olur.">
+          Farklı Gün <i class="tip-ico">i</i>
+        </span>
+      </div>
     </div>
     <div class="stat-card">
       <div class="v" style="color:var(--warning)" id="s-total">—</div>
-      <div class="l">Toplam Olay</div>
+      <div class="l">
+        <span class="has-tip" data-tip="Tüm yoklama hareketlerin: giriş + çıkış + süre yenileme dahil.">
+          Toplam Olay <i class="tip-ico">i</i>
+        </span>
+      </div>
     </div>
   </div>
 
@@ -174,15 +186,27 @@
     <div class="eff-live">
       <div class="eff-tile">
         <div class="v" style="color:var(--primary)" id="eff-people">—</div>
-        <div class="l">Sınıfta</div>
+        <div class="l">
+          <span class="has-tip" data-tip="Şu an sınıfta QR ile giriş yapmış aktif kişi sayısı.">
+            Sınıfta <i class="tip-ico">i</i>
+          </span>
+        </div>
       </div>
       <div class="eff-tile">
         <div class="v" style="color:var(--success)" id="eff-zones">—</div>
-        <div class="l">Açık Bölge</div>
+        <div class="l">
+          <span class="has-tip" data-tip="Aydınlatması yanan bölge sayısı / toplam bölge (Ön, Orta, Arka). Sadece dolu bölgelerin ışığı yanar.">
+            Açık Bölge <i class="tip-ico">i</i>
+          </span>
+        </div>
       </div>
       <div class="eff-tile">
         <div class="v" style="color:var(--warning)" id="eff-power">—</div>
-        <div class="l">Anlık Güç</div>
+        <div class="l">
+          <span class="has-tip" data-tip="Şu an çekilen anlık aydınlatma gücü (Watt). Her açık bölge ~133 W.">
+            Anlık Güç <i class="tip-ico">i</i>
+          </span>
+        </div>
       </div>
     </div>
 

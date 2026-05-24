@@ -92,5 +92,66 @@ body {
 /* Footer */
 .footer { font-size: .62rem; color: var(--muted); text-align: center; padding: 14px 0 22px; }
 
+/* Tooltip (terim aciklamalari icin) */
+.has-tip {
+  position: relative;
+  cursor: help;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.has-tip .tip-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: rgba(56,189,248,.15);
+  color: var(--primary);
+  font-size: 9px;
+  font-weight: 700;
+  font-style: normal;
+  border: 1px solid rgba(56,189,248,.3);
+}
+.has-tip:hover .tip-ico,
+.has-tip.tip-open .tip-ico {
+  background: var(--primary);
+  color: #021e2e;
+}
+.has-tip::before {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: var(--text);
+  padding: 8px 11px;
+  border-radius: 7px;
+  border: 1px solid var(--primary);
+  font-size: .7rem;
+  line-height: 1.45;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+  width: max-content;
+  max-width: 240px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .15s, visibility .15s;
+  z-index: 1000;
+  box-shadow: 0 6px 18px rgba(0,0,0,.5);
+}
+.has-tip:hover::before,
+.has-tip.tip-open::before {
+  opacity: 1;
+  visibility: visible;
+}
+@media (max-width: 480px) {
+  .has-tip::before { max-width: 180px; font-size: .66rem; }
+}
+
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-thumb { background: #2a3a50; border-radius: 2px; }

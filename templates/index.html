@@ -248,21 +248,33 @@
     <div class="col-4">
       <div class="kpi-card">
         <div class="kv text-success" id="kpi-kwh">0.00</div>
-        <div class="kl">kWh Tasarruf</div>
+        <div class="kl">
+          <span class="has-tip" data-tip="Otomasyonsuz duruma göre tasarruf edilen elektrik enerjisi (kilovatsaat).">
+            kWh Tasarruf <i class="tip-ico">i</i>
+          </span>
+        </div>
         <div class="ks text-warning" id="kpi-pct">%0</div>
       </div>
     </div>
     <div class="col-4">
       <div class="kpi-card">
         <div class="kv" style="color:#fde68a" id="kpi-tl">0.00</div>
-        <div class="kl">TL Tasarruf</div>
+        <div class="kl">
+          <span class="has-tip" data-tip="Parasal tasarruf — 4.5 TL/kWh birim fiyat ile hesaplandı (TR ortalaması).">
+            TL Tasarruf <i class="tip-ico">i</i>
+          </span>
+        </div>
         <div class="ks text-muted" style="font-size:.65rem">≈4.5 TL/kWh</div>
       </div>
     </div>
     <div class="col-4">
       <div class="kpi-card">
         <div class="kv" style="color:#86efac" id="kpi-co2">0.00</div>
-        <div class="kl">kg CO₂ Azaltım</div>
+        <div class="kl">
+          <span class="has-tip" data-tip="Atmosfere salınmayan karbon — Türkiye ortalama emisyon faktörü 0.4 kg CO₂/kWh.">
+            kg CO₂ Azaltım <i class="tip-ico">i</i>
+          </span>
+        </div>
         <div class="ks text-muted" style="font-size:.65rem">0.4 kg/kWh</div>
       </div>
     </div>
@@ -272,13 +284,21 @@
   <div class="row g-2 mb-3">
     <div class="col-6">
       <div class="panel text-center py-3">
-        <div style="font-size:.65rem;color:var(--muted)">OTOMASYONLU</div>
+        <div style="font-size:.65rem;color:var(--muted)">
+          <span class="has-tip" data-tip="Sistemimiz aktifken oluşan toplam tüketim. Doluluk bazlı kontrol devrede.">
+            OTOMASYONLU <i class="tip-ico">i</i>
+          </span>
+        </div>
         <div class="fw-bold" style="font-size:1.3rem;color:var(--success)" id="e-auto">0.00 kWh</div>
       </div>
     </div>
     <div class="col-6">
       <div class="panel text-center py-3">
-        <div style="font-size:.65rem;color:var(--muted)">OTOMASYON YOK</div>
+        <div style="font-size:.65rem;color:var(--muted)">
+          <span class="has-tip" data-tip="Bazhat (baseline) — otomasyon hiç olmasaydı tüm sınıfın gün boyu açık kalacağı durum.">
+            OTOMASYON YOK <i class="tip-ico">i</i>
+          </span>
+        </div>
         <div class="fw-bold" style="font-size:1.3rem;color:var(--danger)" id="e-base">0.00 kWh</div>
       </div>
     </div>

@@ -138,15 +138,27 @@
   <div class="stats">
     <div class="stat-card">
       <div class="v" style="color:var(--primary)" id="s-total">—</div>
-      <div class="l">Toplam Olay</div>
+      <div class="l">
+        <span class="has-tip" data-tip="Sisteme yapılan tüm yoklama hareketleri: giriş + çıkış + süre yenileme dahil toplam kayıt sayısı.">
+          Toplam Olay <i class="tip-ico">i</i>
+        </span>
+      </div>
     </div>
     <div class="stat-card">
       <div class="v" style="color:var(--success)" id="s-unique">—</div>
-      <div class="l">Benzersiz Öğrenci</div>
+      <div class="l">
+        <span class="has-tip" data-tip="Sisteme en az bir kez giriş yapmış farklı öğrenci sayısı. Aynı öğrenci 10 kez giriş yapsa bile 1 sayılır.">
+          Benzersiz Öğrenci <i class="tip-ico">i</i>
+        </span>
+      </div>
     </div>
     <div class="stat-card">
       <div class="v" style="color:var(--warning)" id="s-today">—</div>
-      <div class="l">Bugünkü Giriş</div>
+      <div class="l">
+        <span class="has-tip" data-tip="Bugün QR kod okutarak sınıfa giriş yapan kişi sayısı (gece 00:00'dan itibaren).">
+          Bugünkü Giriş <i class="tip-ico">i</i>
+        </span>
+      </div>
     </div>
   </div>
 
@@ -159,7 +171,19 @@
     <div style="overflow-x:auto">
       <table>
         <thead>
-          <tr><th>Ders</th><th>Gün/Saat</th><th class="text-end">Beklenen</th><th class="text-end">Giriş</th><th>Doluluk</th></tr>
+          <tr>
+            <th>Ders</th>
+            <th>Gün/Saat</th>
+            <th class="text-end">
+              <span class="has-tip" data-tip="Ders programında belirtilen beklenen (kayıtlı) öğrenci sayısı.">Beklenen <i class="tip-ico">i</i></span>
+            </th>
+            <th class="text-end">
+              <span class="has-tip" data-tip="Bu ders saatinde QR ile sınıfa giriş yapan farklı öğrenci sayısı.">Giriş <i class="tip-ico">i</i></span>
+            </th>
+            <th>
+              <span class="has-tip" data-tip="Gerçek giriş / Beklenen × 100. %70+ iyi, %30 altı düşük doluluk demektir.">Doluluk <i class="tip-ico">i</i></span>
+            </th>
+          </tr>
         </thead>
         <tbody id="cs-tbody"><tr><td colspan="5" class="empty">Yükleniyor...</td></tr></tbody>
       </table>
@@ -196,7 +220,22 @@
     <div style="overflow-x:auto">
       <table>
         <thead>
-          <tr><th>#</th><th>Tarih</th><th class="text-end">Tasarruf</th><th class="text-end">%</th><th class="text-end">TL</th><th class="text-end">CO₂</th></tr>
+          <tr>
+            <th>#</th>
+            <th>Tarih</th>
+            <th class="text-end">
+              <span class="has-tip" data-tip="Otomasyonsuz duruma göre kazanılan elektrik miktarı (kWh).">Tasarruf <i class="tip-ico">i</i></span>
+            </th>
+            <th class="text-end">
+              <span class="has-tip" data-tip="Yüzdesel tasarruf: (Bazhat − Otomasyonlu) / Bazhat × 100.">% <i class="tip-ico">i</i></span>
+            </th>
+            <th class="text-end">
+              <span class="has-tip" data-tip="Parasal tasarruf — birim elektrik fiyatı 4.5 TL/kWh ile çarpılarak hesaplandı.">TL <i class="tip-ico">i</i></span>
+            </th>
+            <th class="text-end">
+              <span class="has-tip" data-tip="Karbon ayak izi azaltımı — Türkiye ortalama emisyon faktörü 0.4 kg CO₂/kWh.">CO₂ <i class="tip-ico">i</i></span>
+            </th>
+          </tr>
         </thead>
         <tbody id="runs-tbody"><tr><td colspan="6" class="empty">Yükleniyor...</td></tr></tbody>
       </table>
