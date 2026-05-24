@@ -66,6 +66,20 @@ def login_required(f):
     return wrapped
 
 
+def admin_required(f):
+    """Sadece admin rolündeki kullanıcılar erişebilir."""
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        if 'user' not in session:
+            return jsonify({'ok': False, 'error': 'Giriş gerekli.',
+                            'login_required': True}), 401
+        user = db.get_user(session['user'])
+        if not user or user.get('role') != 'admin':
+            return jsonify({'ok': False, 'error': 'Bu işlem için yönetici yetkisi gerekir.'}), 403
+        return f(*args, **kwargs)
+    return wrapped
+
+
 # --- Öğrenci Kimlik Doğrulama
 
 def _valid_student_no(s):

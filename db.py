@@ -405,6 +405,24 @@ def user_count():
         return n
 
 
+def list_users():
+    with _lock:
+        c = _conn()
+        rows = c.execute("SELECT id, username, display_name, role, created_at FROM users ORDER BY created_at").fetchall()
+        c.close()
+        return [dict(r) for r in rows]
+
+
+def delete_user(username):
+    with _lock:
+        c = _conn()
+        cur = c.execute("DELETE FROM users WHERE username=?", (username,))
+        c.commit()
+        affected = cur.rowcount
+        c.close()
+        return affected > 0
+
+
 # --- Öğrenciler
 
 def get_student(student_no):

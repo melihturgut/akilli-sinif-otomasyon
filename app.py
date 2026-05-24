@@ -9,7 +9,8 @@ import export
 import report
 import realtime
 import notifications
-from auth import login_required, student_required
+from auth import login_required, student_required, admin_required
+from werkzeug.security import generate_password_hash
 import os
 import threading
 import time
@@ -460,6 +461,64 @@ def api_clear_active_checkins():
     n = db.clear_all_active_checkins()
     realtime.emit('live_update', live.get_state())
     return jsonify({'ok': True, 'cleared': n})
+
+
+# --- Hoca Hesap Yonetimi (admin yetkisiyle) ---
+
+@app.route('/api/users', methods=['GET'])
+@admin_required
+def api_list_users():
+    return jsonify({'users': db.list_users()})
+
+
+@app.route('/api/users', methods=['POST'])
+@admin_required
+def api_create_user():
+    data = request.get_json(force=True) or {}
+    username = str(data.get('username', '')).strip().lower()
+    password = str(data.get('password', ''))
+    display_name = str(data.get('display_name', '')).strip() or username
+    role = data.get('role', 'hoca')
+    if role not in ('hoca', 'admin'):
+        role = 'hoca'
+
+    # Validasyon
+    if not username or len(username) < 3:
+        return jsonify({'ok': False, 'error': 'Kullanıcı adı en az 3 karakter olmalı.'}), 400
+    if not username.replace('_', '').replace('.', '').isalnum():
+        return jsonify({'ok': False, 'error': 'Kullanıcı adı sadece harf, rakam, alt çizgi ve nokta içerebilir.'}), 400
+    if len(password) < 6:
+        return jsonify({'ok': False, 'error': 'Şifre en az 6 karakter olmalı.'}), 400
+    if db.get_user(username):
+        return jsonify({'ok': False, 'error': 'Bu kullanıcı adı zaten kayıtlı.'}), 400
+
+    db.create_user(username, generate_password_hash(password), display_name, role)
+    return jsonify({'ok': True, 'username': username,
+                    'display_name': display_name, 'role': role})
+
+
+@app.route('/api/users/<username>', methods=['DELETE'])
+@admin_required
+def api_delete_user(username):
+    # Kendini silmeyi engelle
+    if username == session.get('user'):
+        return jsonify({'ok': False, 'error': 'Kendi hesabınızı silemezsiniz.'}), 400
+    if db.delete_user(username):
+        return jsonify({'ok': True})
+    return jsonify({'ok': False, 'error': 'Kullanıcı bulunamadı.'}), 404
+
+
+@app.route('/api/users/<username>/reset-password', methods=['POST'])
+@admin_required
+def api_reset_user_password(username):
+    data = request.get_json(force=True) or {}
+    new_password = str(data.get('new_password', ''))
+    if len(new_password) < 6:
+        return jsonify({'ok': False, 'error': 'Şifre en az 6 karakter olmalı.'}), 400
+    if not db.get_user(username):
+        return jsonify({'ok': False, 'error': 'Kullanıcı bulunamadı.'}), 404
+    db.update_user_password(username, generate_password_hash(new_password))
+    return jsonify({'ok': True})
 
 
 # --- Veritabanı Sorguları (geçmiş yoklama + enerji koşuları)

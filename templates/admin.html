@@ -191,6 +191,50 @@
     </div>
   </div>
 
+  <!-- Hoca Hesap Yönetimi (sadece admin görür) -->
+  <div class="panel mb-3" id="user-panel" style="display:none">
+    <div class="sec-title">
+      👨‍🏫 Hoca Hesapları
+      <span class="ct" id="user-count"></span>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:10px">
+      Yeni hoca hesabı ekleyin, mevcut hesapları yönetin (sadece yönetici yetkisi).
+    </div>
+
+    <!-- Yeni hoca formu -->
+    <div style="background:#0a0f1a;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-weight:700;font-size:.82rem;margin-bottom:8px">+ Yeni Hoca Ekle</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+        <input id="nu-username" placeholder="Kullanıcı adı (örn: ahmet)"
+               style="background:#111827;border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 10px;font-size:.8rem" />
+        <input id="nu-display" placeholder="Görünen ad (örn: Ahmet Yılmaz)"
+               style="background:#111827;border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 10px;font-size:.8rem" />
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px">
+        <input id="nu-password" type="text" placeholder="Şifre (min 6 karakter)"
+               style="background:#111827;border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 10px;font-size:.8rem" />
+        <select id="nu-role" style="background:#111827;border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 10px;font-size:.8rem">
+          <option value="hoca">Hoca</option>
+          <option value="admin">Yönetici</option>
+        </select>
+        <button onclick="createUser()"
+                style="background:var(--success);color:#021;border:none;border-radius:6px;padding:7px 14px;cursor:pointer;font-weight:700;font-size:.8rem">
+          + Ekle
+        </button>
+      </div>
+    </div>
+
+    <!-- Mevcut kullanıcı listesi -->
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>Kullanıcı</th><th>Ad</th><th>Rol</th><th>Kayıt</th><th class="text-end">İşlem</th></tr>
+        </thead>
+        <tbody id="users-tbody"><tr><td colspan="5" class="empty">Yükleniyor...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Geçmiş Yoklama -->
   <div class="panel mb-3">
     <div class="sec-title">
@@ -366,7 +410,86 @@
     if (e.key === 'Enter') loadAttendance();
   });
 
-  loadStats(); loadClassStats(); loadAttendance(); loadRuns();
+  // --- Hoca yonetimi (sadece admin yetkisi) ---
+
+  function loadUsers() {
+    fetch('/api/users').then(r => {
+      if (r.status === 403) return null;  // admin degil, gizle
+      if (!r.ok) return null;
+      return r.json();
+    }).then(d => {
+      if (!d || !d.users) return;  // panel gizli kalır
+      document.getElementById('user-panel').style.display = '';
+      document.getElementById('user-count').textContent = d.users.length + ' kullanıcı';
+      const me = "{{ user.username }}";
+      document.getElementById('users-tbody').innerHTML = d.users.map(u => {
+        const isMe = u.username === me;
+        const roleLabel = u.role === 'admin' ? '👑 Yönetici' : '👨‍🏫 Hoca';
+        return `<tr>
+          <td><b>${esc(u.username)}</b>${isMe ? ' <span style="color:var(--primary);font-size:.6rem">(siz)</span>' : ''}</td>
+          <td>${esc(u.display_name || '')}</td>
+          <td>${roleLabel}</td>
+          <td style="color:var(--muted)">${esc((u.created_at || '').slice(0,10))}</td>
+          <td class="text-end" style="white-space:nowrap">
+            <button onclick="resetUserPwd('${esc(u.username)}')"
+                    style="background:#1f2937;border:1px solid var(--border);color:var(--warning);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.7rem;margin-right:3px">
+              🔑 Şifre
+            </button>
+            ${isMe ? '' : `<button onclick="deleteUser('${esc(u.username)}')"
+                    style="background:#1f2937;border:1px solid var(--border);color:var(--danger);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.7rem">
+              🗑 Sil
+            </button>`}
+          </td>
+        </tr>`;
+      }).join('');
+    });
+  }
+
+  function createUser() {
+    const username = document.getElementById('nu-username').value.trim();
+    const display_name = document.getElementById('nu-display').value.trim();
+    const password = document.getElementById('nu-password').value;
+    const role = document.getElementById('nu-role').value;
+    if (!username || !password) { alert('Kullanıcı adı ve şifre zorunlu.'); return; }
+    fetch('/api/users', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ username, display_name, password, role })
+    }).then(r => r.json()).then(res => {
+      if (res.ok) {
+        document.getElementById('nu-username').value = '';
+        document.getElementById('nu-display').value = '';
+        document.getElementById('nu-password').value = '';
+        loadUsers();
+        alert(`✓ "${res.username}" eklendi (${res.role}).\nİlk şifre: kullanıcıya iletin.`);
+      } else {
+        alert(res.error || 'Hata');
+      }
+    });
+  }
+
+  function deleteUser(username) {
+    if (!confirm(`"${username}" kullanıcısını silmek istiyor musunuz?`)) return;
+    fetch(`/api/users/${username}`, { method: 'DELETE' })
+      .then(r => r.json()).then(res => {
+        if (res.ok) { loadUsers(); }
+        else { alert(res.error || 'Hata'); }
+      });
+  }
+
+  function resetUserPwd(username) {
+    const newP = prompt(`"${username}" için yeni şifre (min 6 karakter):`);
+    if (!newP) return;
+    if (newP.length < 6) { alert('Şifre en az 6 karakter olmalı.'); return; }
+    fetch(`/api/users/${username}/reset-password`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ new_password: newP })
+    }).then(r => r.json()).then(res => {
+      if (res.ok) { alert(`✓ "${username}" şifresi sıfırlandı.\nYeni şifre: ${newP}`); }
+      else { alert(res.error || 'Hata'); }
+    });
+  }
+
+  loadStats(); loadClassStats(); loadAttendance(); loadRuns(); loadUsers();
 
   // WebSocket abonelikleri
   let wsConnected = false;
