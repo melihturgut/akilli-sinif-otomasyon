@@ -15,4 +15,9 @@ services:
         generateValue: true
       - key: TZ
         value: Europe/Istanbul
+      # Turso DB - degerler Render dashboard'tan girilir (sync: false ile)
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
     autoDeploy: true

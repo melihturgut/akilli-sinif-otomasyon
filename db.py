@@ -1,7 +1,6 @@
-# SQLite katmani.
-# Tablolar: attendance (yoklama), active_checkins (aktif girisler),
-# energy_runs (sim ozetleri), users (hocalar), students, notifications.
-# Not: cloud'da SQLite dosyasi gecici, restart'da silinir.
+# DB katmani - lokal SQLite veya cloud Turso destegi.
+# TURSO_DATABASE_URL ve TURSO_AUTH_TOKEN env varsa Turso'ya baglanir,
+# yoksa lokal smartclass.db dosyasini kullanir.
 import sqlite3
 import threading
 import time
@@ -9,11 +8,146 @@ import json
 import os
 
 DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'smartclass.db')
+TURSO_URL = os.environ.get('TURSO_DATABASE_URL')
+TURSO_TOKEN = os.environ.get('TURSO_AUTH_TOKEN')
+USE_TURSO = bool(TURSO_URL and TURSO_TOKEN)
 
 _lock = threading.Lock()
+_turso_client = None
+
+if USE_TURSO:
+    # libsql:// -> https:// (HTTP API)
+    _turso_http_url = TURSO_URL.replace('libsql://', 'https://', 1) + '/v2/pipeline'
+    _turso_headers = {
+        'Authorization': f'Bearer {TURSO_TOKEN}',
+        'Content-Type': 'application/json',
+    }
+    print('[DB] Turso (HTTP) kullaniliyor')
+
+
+# --- Turso HTTP API adapter (sqlite3 benzeri arayuz) ---
+
+class _Row(dict):
+    """sqlite3.Row benzeri - hem r['col'] hem r[0] erisimi."""
+    def __init__(self, columns, values):
+        # Turso degerleri {"type": "text", "value": "..."} formatinda dondurur
+        clean_values = []
+        for v in values:
+            if isinstance(v, dict) and 'value' in v:
+                t = v.get('type')
+                val = v['value']
+                if t == 'integer':
+                    val = int(val) if val is not None else None
+                elif t == 'float':
+                    val = float(val) if val is not None else None
+                elif t == 'null':
+                    val = None
+                clean_values.append(val)
+            elif isinstance(v, dict) and v.get('type') == 'null':
+                clean_values.append(None)
+            else:
+                clean_values.append(v)
+        super().__init__(zip(columns, clean_values))
+        self._values = clean_values
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._values[key]
+        return super().__getitem__(key)
+
+
+def _turso_execute(sql, args=()):
+    """Tek statement HTTP cagrisi."""
+    import requests
+    # args'i Turso formatına çevir
+    arg_list = []
+    for a in (args or []):
+        if a is None:
+            arg_list.append({'type': 'null', 'value': None})
+        elif isinstance(a, bool):
+            arg_list.append({'type': 'integer', 'value': str(int(a))})
+        elif isinstance(a, int):
+            arg_list.append({'type': 'integer', 'value': str(a)})
+        elif isinstance(a, float):
+            arg_list.append({'type': 'float', 'value': a})
+        else:
+            arg_list.append({'type': 'text', 'value': str(a)})
+
+    payload = {
+        'requests': [
+            {'type': 'execute',
+             'stmt': {'sql': sql, 'args': arg_list}},
+            {'type': 'close'},
+        ]
+    }
+    r = requests.post(_turso_http_url, headers=_turso_headers, json=payload, timeout=15)
+    r.raise_for_status()
+    data = r.json()
+    # data['results'] = [{'type': 'ok', 'response': {...}}, {'type': 'ok', ...}]
+    exec_result = data['results'][0]
+    if exec_result['type'] == 'error':
+        raise Exception('Turso error: ' + str(exec_result.get('error')))
+    return exec_result['response']['result']
+
+
+class _TursoCursor:
+    def __init__(self):
+        self._result = None
+        self.rowcount = -1
+        self.lastrowid = None
+
+    def execute(self, sql, args=()):
+        self._result = _turso_execute(sql, args)
+        self.rowcount = int(self._result.get('affected_row_count', -1))
+        lid = self._result.get('last_insert_rowid')
+        self.lastrowid = int(lid) if lid is not None else None
+        return self
+
+    def _columns(self):
+        return [c['name'] for c in self._result.get('cols', [])]
+
+    def fetchone(self):
+        rows = self._result.get('rows', []) if self._result else []
+        if not rows: return None
+        return _Row(self._columns(), rows[0])
+
+    def fetchall(self):
+        rows = self._result.get('rows', []) if self._result else []
+        cols = self._columns()
+        return [_Row(cols, r) for r in rows]
+
+    def __iter__(self):
+        return iter(self.fetchall())
+
+
+class _TursoConn:
+    def cursor(self):
+        return _TursoCursor()
+
+    def execute(self, sql, args=()):
+        return _TursoCursor().execute(sql, args)
+
+    def executescript(self, script):
+        for stmt in script.split(';'):
+            s = stmt.strip()
+            if s:
+                try:
+                    _turso_execute(s)
+                except Exception as e:
+                    # IF NOT EXISTS dahi olsa zaten varsa hata vermesin
+                    if 'already exists' not in str(e).lower():
+                        raise
+
+    def commit(self):
+        pass
+
+    def close(self):
+        pass
 
 
 def _conn():
+    if USE_TURSO:
+        return _TursoConn()
     c = sqlite3.connect(DB_FILE, check_same_thread=False)
     c.row_factory = sqlite3.Row
     return c

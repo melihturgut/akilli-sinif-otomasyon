@@ -39,17 +39,11 @@ LAST_NAMES = [
 DEMO_PASSWORD = 'demo123'  # tüm demo öğrencileri ortak şifre
 
 
-def _conn():
-    c = sqlite3.connect(db.DB_FILE)
-    c.row_factory = sqlite3.Row
-    return c
-
-
 # --- Temizleme
 
 def clean_demo_data():
     """Demo verilerini temizle. Gerçek kullanıcıları (admin, rasit) korur."""
-    c = _conn()
+    c = db._conn()
     c.execute("DELETE FROM attendance")
     c.execute("DELETE FROM active_checkins")
     c.execute("DELETE FROM energy_runs")
@@ -81,7 +75,7 @@ def seed_students(n=30):
 
 def seed_attendance(n=300):
     """Son 28 günde ders saatlerine denk gelen yoklama olayları oluştur."""
-    c = _conn()
+    c = db._conn()
     students = [r['student_no'] for r in c.execute("SELECT student_no FROM students").fetchall()]
     if not students:
         c.close()
@@ -145,7 +139,7 @@ def seed_attendance(n=300):
 # --- Aktif check-in'ler (sanki şu an sınıfta gibi)
 
 def seed_active_checkins(n=4):
-    c = _conn()
+    c = db._conn()
     students = [r['student_no'] for r in c.execute("SELECT student_no FROM students LIMIT 10").fetchall()]
     if not students:
         c.close()
@@ -171,7 +165,7 @@ def seed_active_checkins(n=4):
 # --- Simülasyon koşmaları
 
 def seed_runs(n=5):
-    c = _conn()
+    c = db._conn()
     now = time.time()
     day_short = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
 
