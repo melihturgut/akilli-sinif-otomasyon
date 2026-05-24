@@ -21,23 +21,32 @@ import db
 from schedule_mgr import DAY_NAMES, schedule_mgr
 
 
-# --- Yazı tipi (Türkçe karakter desteği için)
+# Font yukleme - Turkce karakter destegi icin DejaVu Sans bundle ediyoruz
+# (Render Linux'unda Arial olmadigi icin sorun cikiyordu)
 
 def _register_fonts():
-    win_fonts = 'C:/Windows/Fonts'
+    here = os.path.dirname(os.path.abspath(__file__))
+    # Tercih sirasi: paketlenmis DejaVu -> Linux dejavu -> Windows arial -> Helvetica
     candidates = [
-        ('Arial',      'arial.ttf',   'Helvetica'),
-        ('Arial-Bold', 'arialbd.ttf', 'Helvetica-Bold'),
+        ('TR',      os.path.join(here, 'static/fonts/DejaVuSans.ttf')),
+        ('TR-Bold', os.path.join(here, 'static/fonts/DejaVuSans-Bold.ttf')),
+        ('TR',      '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
+        ('TR-Bold', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
+        ('TR',      'C:/Windows/Fonts/arial.ttf'),
+        ('TR-Bold', 'C:/Windows/Fonts/arialbd.ttf'),
     ]
-    base = fall = 'Helvetica'
+    base = 'Helvetica'
     bold = 'Helvetica-Bold'
-    for name, fn, fallback in candidates:
-        path = os.path.join(win_fonts, fn)
+    for name, path in candidates:
         if os.path.exists(path):
             try:
-                pdfmetrics.registerFont(TTFont(name, path))
-                if name == 'Arial':      base = name
-                if name == 'Arial-Bold': bold = name
+                # Ayni isimle ikinci kez register etme (ilk basarili oldu)
+                if name == 'TR' and base != 'TR':
+                    pdfmetrics.registerFont(TTFont('TR', path))
+                    base = 'TR'
+                elif name == 'TR-Bold' and bold != 'TR-Bold':
+                    pdfmetrics.registerFont(TTFont('TR-Bold', path))
+                    bold = 'TR-Bold'
             except Exception:
                 pass
     return base, bold
