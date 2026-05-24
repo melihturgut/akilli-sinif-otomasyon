@@ -1,8 +1,5 @@
 # Akilli Sinif Otomasyonu
 
-MDB308 Cok Disiplinli Takim Projesi - 4. sinif bahar donemi.
-Danisman: Muhammet Rasit Cesur
-
 IoT tabanli akilli sinif enerji yonetim sistemi. Doluluk bazli aydinlatma ve HVAC kontrolu yapip enerji tasarrufu sagliyor. QR kod ile dijital yoklama ve etut modu var. Web tabanli, telefondan PWA olarak yuklenebiliyor.
 
 ## Canli URL
@@ -10,15 +7,6 @@ IoT tabanli akilli sinif enerji yonetim sistemi. Doluluk bazli aydinlatma ve HVA
 **https://akilli-sinif-otomasyon.onrender.com**
 
 Render'a deploy edildi, UptimeRobot ile 7/24 uyaniik. DB Turso'da (kalici cloud SQLite).
-
-## Takim
-
-- Melih Turgut - BM
-- Samed Mete Ozmen - BM
-- Serkan Yildirim - EEM
-- Enes Tunahan Pakelli - EEM
-- Kamil Uzun - END
-- Irem Oz - END
 
 ## Ozellikler
 
@@ -76,8 +64,7 @@ Render'a deploy edildi, UptimeRobot ile 7/24 uyaniik. DB Turso'da (kalici cloud 
 ### Bildirim Sistemi
 - In-app cani simgesi (sag ust kose)
 - Tarayici native bildirimleri
-- Hocaya: sim tamamlandi, ders iptal vb
-- Ogrenciye: yoklama alindi, sure yenilendi
+- Sim tamamlandi, ders iptal, yoklama alindi vb. olaylarda
 
 ### PDF Rapor
 - Tek tikla 7 sayfalik profesyonel rapor
@@ -85,7 +72,7 @@ Render'a deploy edildi, UptimeRobot ile 7/24 uyaniik. DB Turso'da (kalici cloud 
 - DejaVu Sans font ile Turkce karakter destegi
 
 ### CSV / Excel Disa Aktarma
-- Endustri ekibi icin pandas/Minitab uyumlu cikti
+- pandas/Minitab uyumlu cikti
 - 5 sayfali Excel (ozet, yoklama, kosmalar, ders, gunluk)
 - Ayri CSV'ler de mevcut
 
@@ -138,7 +125,6 @@ python seed_demo.py --clean
 ## Varsayilan Hesaplar
 
 - **admin / admin123** (yonetici - tam yetki)
-- **rasit / 123456** (danisman hocaya acildi)
 - **Demo ogrenciler:** seed_demo.py 30 ogrenci olusturur, hepsinin sifresi `demo123`
 
 ## Sayfalar
@@ -223,7 +209,7 @@ app_settings        (sinif konumu vb. ayarlar)
   key, value
 ```
 
-## Matematik Modeli (Rapor 2.5)
+## Matematik Modeli
 
 Amac fonksiyonu:
 ```
@@ -250,8 +236,4 @@ Guc degerleri `simulation.py` icinde:
 - Turso entegrasyonundan once Render her deploy'da SQLite DB siliyordu, simdi kalici
 - PWA telefonda guzel calisiyor ama iPhone Safari'de install ikonu cikmiyor (Apple meselesi)
 - Sim hizli calistirilirsa (300x) bazen websocket update'leri kaciriyor, henuz duzeltmedim
-- GPS spoofing ile yoklama hilesi tam onlenmedi (raporda mevcut acik olarak belirtildi)
-
-## Lisans
-
-Akademik / egitim amacli. MDB308 kapsaminda gelistirildi.
+- GPS spoofing ile yoklama hilesi tam onlenmedi (bilinen acik)
