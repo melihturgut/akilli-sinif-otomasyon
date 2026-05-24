@@ -202,6 +202,17 @@ def cleanup_expired():
         return n
 
 
+def clear_all_active_checkins():
+    """Tum aktif check-in'leri sil (admin yetkisi gerektirir)."""
+    with _lock:
+        c = _conn()
+        cur = c.execute("DELETE FROM active_checkins")
+        c.commit()
+        n = cur.rowcount
+        c.close()
+        return n
+
+
 # --- Enerji Koşusu Özeti
 
 def save_energy_run(data):

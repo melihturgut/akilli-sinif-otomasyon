@@ -26,14 +26,14 @@ db.init()
 auth.init_default_admin()
 
 # Cloud deploy — ilk başlatmada DB boşsa demo verisi yükle
+# Not: aktif check-in'leri seed etmiyoruz, sınıf gerçekten boş başlasın
 if 'PORT' in os.environ and db.student_count() == 0:
     try:
         import seed_demo
         seed_demo.seed_students(30)
         seed_demo.seed_attendance(300)
-        seed_demo.seed_active_checkins(4)
         seed_demo.seed_runs(5)
-        print('[CLOUD] Demo verisi otomatik yuklendi')
+        print('[CLOUD] Demo verisi otomatik yuklendi (aktif check-in haric)')
     except Exception as e:
         print('[CLOUD] Seed hatasi:', e)
 
@@ -451,6 +451,15 @@ def api_clear_classroom_location():
     db.set_setting('classroom_lat', None)
     db.set_setting('classroom_lng', None)
     return jsonify({'ok': True})
+
+
+@app.route('/api/admin/clear-active-checkins', methods=['POST'])
+@login_required
+def api_clear_active_checkins():
+    """Tum aktif check-in'leri sil. Sahte/eski demo verisini temizlemek icin."""
+    n = db.clear_all_active_checkins()
+    realtime.emit('live_update', live.get_state())
+    return jsonify({'ok': True, 'cleared': n})
 
 
 # --- Veritabanı Sorguları (geçmiş yoklama + enerji koşuları)
