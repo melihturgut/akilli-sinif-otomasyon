@@ -235,6 +235,33 @@
     </div>
   </div>
 
+  <!-- Kayıtlı Öğrenciler -->
+  <div class="panel mb-3">
+    <div class="sec-title">
+      🎓 Kayıtlı Öğrenciler
+      <span class="ct" id="students-count"></span>
+    </div>
+    <div class="search-box">
+      <input type="text" id="stu-search" placeholder="İsim veya öğrenci no ara..." />
+      <button onclick="filterStudents()">Ara</button>
+      <button onclick="clearStuSearch()" id="stu-clear" style="display:none">✕</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Öğrenci No</th>
+            <th>Ad Soyad</th>
+            <th class="text-end">Giriş Sayısı</th>
+            <th>Kayıt Tarihi</th>
+            <th>Son Giriş</th>
+          </tr>
+        </thead>
+        <tbody id="students-tbody"><tr><td colspan="5" class="empty">Yükleniyor...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Geçmiş Yoklama -->
   <div class="panel mb-3">
     <div class="sec-title">
@@ -489,7 +516,54 @@
     });
   }
 
-  loadStats(); loadClassStats(); loadAttendance(); loadRuns(); loadUsers();
+  // --- Kayitli ogrenciler ---
+  let allStudents = [];
+
+  function loadStudents() {
+    fetch('/api/students').then(r => r.json()).then(d => {
+      allStudents = d.students || [];
+      renderStudents(allStudents);
+    });
+  }
+
+  function renderStudents(list) {
+    document.getElementById('students-count').textContent = list.length + ' öğrenci';
+    if (!list.length) {
+      document.getElementById('students-tbody').innerHTML =
+        '<tr><td colspan="5" class="empty">Kayıtlı öğrenci yok</td></tr>';
+      return;
+    }
+    document.getElementById('students-tbody').innerHTML = list.map(s => `
+      <tr>
+        <td><b>${esc(s.student_no)}</b></td>
+        <td>${esc(s.name || '—')}</td>
+        <td class="text-end"><b style="color:var(--success)">${s.checkin_count || 0}</b></td>
+        <td style="color:var(--muted)">${esc((s.created_at || '').slice(0,10))}</td>
+        <td style="color:var(--muted)">${esc((s.last_login || '').slice(0,16) || '—')}</td>
+      </tr>`).join('');
+  }
+
+  function filterStudents() {
+    const q = document.getElementById('stu-search').value.trim().toLowerCase();
+    document.getElementById('stu-clear').style.display = q ? '' : 'none';
+    if (!q) { renderStudents(allStudents); return; }
+    const filtered = allStudents.filter(s =>
+      (s.student_no || '').toLowerCase().includes(q) ||
+      (s.name || '').toLowerCase().includes(q)
+    );
+    renderStudents(filtered);
+  }
+
+  function clearStuSearch() {
+    document.getElementById('stu-search').value = '';
+    filterStudents();
+  }
+
+  document.getElementById('stu-search').addEventListener('keydown', e => {
+    if (e.key === 'Enter') filterStudents();
+  });
+
+  loadStats(); loadClassStats(); loadAttendance(); loadRuns(); loadUsers(); loadStudents();
 
   // WebSocket abonelikleri
   let wsConnected = false;
@@ -497,7 +571,7 @@
     const sock = io();
     sock.on('connect',    () => { wsConnected = true;  });
     sock.on('disconnect', () => { wsConnected = false; });
-    sock.on('attendance_event', () => { loadStats(); loadAttendance(); });
+    sock.on('attendance_event', () => { loadStats(); loadAttendance(); loadStudents(); });
     sock.on('live_update',      () => { loadStats(); });
     sock.on('run_complete',     () => { loadRuns(); loadStats(); });
     sock.on('schedule_update',  () => { loadClassStats(); });

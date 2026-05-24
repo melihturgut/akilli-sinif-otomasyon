@@ -508,6 +508,13 @@ def api_delete_user(username):
     return jsonify({'ok': False, 'error': 'Kullanıcı bulunamadı.'}), 404
 
 
+@app.route('/api/students', methods=['GET'])
+@login_required
+def api_list_students():
+    """Kayitli ogrenci listesi - hoca + admin gorebilir."""
+    return jsonify({'students': db.list_students()})
+
+
 @app.route('/api/users/<username>/reset-password', methods=['POST'])
 @admin_required
 def api_reset_user_password(username):

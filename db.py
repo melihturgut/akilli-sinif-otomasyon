@@ -473,6 +473,21 @@ def student_count():
         return n
 
 
+def list_students():
+    """Kayitli ogrencileri sirala - yoklama sayisi ile birlikte."""
+    with _lock:
+        c = _conn()
+        rows = c.execute("""
+            SELECT s.student_no, s.name, s.created_at, s.last_login,
+                   (SELECT COUNT(*) FROM attendance a
+                    WHERE a.student_no = s.student_no AND a.action='giris') AS checkin_count
+            FROM students s
+            ORDER BY s.created_at DESC
+        """).fetchall()
+        c.close()
+        return [dict(r) for r in rows]
+
+
 # --- Bildirimler
 
 def add_notification(user_type, user_id, title, message=None,
