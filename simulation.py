@@ -26,6 +26,8 @@ class SmartClassroomSimulation:
         self.occupancy = 0
         self.lighting_level = 0   # 0, 30, 60, 100 (%)
         self.hvac_on = False
+        self.hvac_level = 0       # PWM seviyesi: 0, 30, 50, 75, 100 (%)
+        self.hvac_mode = 'off'    # off / pre-heat / active / standby
         self.projector_on = False
         self.projector_sleep = False  # Uyku modu (%15 guc)
         self.natural_light = 0.0      # LDR sensor (0-1)
@@ -135,13 +137,61 @@ class SmartClassroomSimulation:
             is_weekend = day >= 5
             force_off = (is_night or is_weekend) and self.occupancy == 0
 
+            # --- Akilli Set-Point (sicaklik konfor bandi) ---
+            # Doluluk + zamana gore esnek esik degerleri
+            if is_night or is_weekend:
+                # Sadece donma / asiri sicakliga karsi koruma
+                t_lo, t_hi = 14.0, 30.0
+            elif self.occupancy >= 10:
+                # Yogun ders - siki konfor
+                t_lo, t_hi = 22.0, 24.0
+            elif self.occupancy > 0:
+                # Az kisi - esnek konfor
+                t_lo, t_hi = 20.0, 26.0
+            else:
+                # Bos sinif gunduz - sadece asirilik engelle
+                t_lo, t_hi = 18.0, 28.0
+
+            # --- Pre-Heating: Ders baslamasina 15 dk kala HVAC baslar ---
+            pre_heat_active = False
+            if not in_class and not force_off:
+                # Onumuzdeki 15 dk icinde ders baslayacak mi?
+                for c in schedule_mgr.list_all():
+                    if not c.get('active', True) or c['day'] != day:
+                        continue
+                    mins_to_class = (c['start'] - hour) * 60 - minute_in_hour
+                    if 0 < mins_to_class <= 15:
+                        # Ders 15 dk icinde basliyor - on isitma baslat
+                        # Sadece sicaklik 22'nin altinda veya 24'un ustundeyse
+                        if self.temperature < 22.0 or self.temperature > 24.0:
+                            pre_heat_active = True
+                            t_lo, t_hi = 22.0, 24.0  # Hedef konfor
+                            break
+
             # --- Hiyerarşik Kontrol Algoritması ---
             minutes_since_motion = self.current_minute - self.last_motion_minute
 
+            # --- Kademeli HVAC Hesabi (PWM) ---
+            # Sicaklik konfor bandi disindaysa, fark ne kadar buyukse o kadar yuksek guc
+            def _compute_hvac_level():
+                if self.temperature < t_lo:
+                    diff = t_lo - self.temperature
+                elif self.temperature > t_hi:
+                    diff = self.temperature - t_hi
+                else:
+                    return 0  # konforda
+                # Fark -> guc seviyesi (PWM kademe)
+                if diff < 0.5: return 30
+                if diff < 1.5: return 50
+                if diff < 3.0: return 75
+                return 100
+
             if force_off:
-                # Gece veya hafta sonu, kimse yok -> hepsi kapali
+                # Gece veya hafta sonu, kimse yok -> hepsi kapali (sadece donma korumasi)
                 self.lighting_level = 0
-                self.hvac_on = False
+                self.hvac_level = _compute_hvac_level()  # 14<T<30 disindaysa devreye girer
+                self.hvac_on = self.hvac_level > 0
+                self.hvac_mode = 'standby' if self.hvac_on else 'off'
                 self.projector_on = False
                 self.projector_sleep = False
             elif self.occupancy > 0 or (self.motion_detected and minutes_since_motion < self.motion_timeout):
@@ -152,19 +202,33 @@ class SmartClassroomSimulation:
                     self.lighting_level = 60   # Orta gun -> orta aydinlatma
                 else:
                     self.lighting_level = 100  # Karanlik / gece dersi -> tam
-                self.hvac_on = not (20.0 <= self.temperature <= 25.0)
+                self.hvac_level = _compute_hvac_level()
+                self.hvac_on = self.hvac_level > 0
+                self.hvac_mode = 'active' if self.hvac_on else 'off'
                 self.projector_on = in_class
+                self.projector_sleep = False
+            elif pre_heat_active:
+                # Ders baslamadan once on isitma/sogutma
+                self.lighting_level = 0
+                self.hvac_level = _compute_hvac_level()
+                self.hvac_on = self.hvac_level > 0
+                self.hvac_mode = 'pre-heat' if self.hvac_on else 'off'
+                self.projector_on = False
                 self.projector_sleep = False
             elif minutes_since_motion >= self.power_timeout:
                 # 15. dakika — tamamen kapat
                 self.lighting_level = 0
+                self.hvac_level = 0
                 self.hvac_on = False
+                self.hvac_mode = 'off'
                 self.projector_on = False
                 self.projector_sleep = False
             elif minutes_since_motion >= self.motion_timeout:
-                # 10. dakika — %30 dim + projektor uyku
+                # 10. dakika — %30 dim + projektor uyku, HVAC kapali
                 self.lighting_level = 30
+                self.hvac_level = 0
                 self.hvac_on = False
+                self.hvac_mode = 'off'
                 self.projector_sleep = self.projector_on  # Uyku modu
                 self.projector_on = False
 
@@ -176,12 +240,13 @@ class SmartClassroomSimulation:
                 P_auto += int(self.P_lighting_full * 0.6)
             elif self.lighting_level == 30:
                 P_auto += self.P_lighting_dim
-            if self.hvac_on:
-                P_auto += self.P_hvac
+            # HVAC PWM kademesi (0/30/50/75/100 %)
+            if self.hvac_level > 0:
+                P_auto += int(self.P_hvac * self.hvac_level / 100)
             if self.projector_on:
                 P_auto += self.P_projector
             elif self.projector_sleep:
-                P_auto += int(self.P_projector * 0.15)  # Uyku modu = %15 güç
+                P_auto += int(self.P_projector * 0.15)
 
             # --- Baz Hat (Otomasyon Yok): Hft içi 07-21 saatleri arası her şey açık ---
             P_baseline = 0
@@ -312,6 +377,8 @@ class SmartClassroomSimulation:
                 'occupancy': self.occupancy,
                 'lighting_level': self.lighting_level,
                 'hvac_on': self.hvac_on,
+                'hvac_level': self.hvac_level,
+                'hvac_mode': self.hvac_mode,
                 'projector_on': self.projector_on,
                 'projector_sleep': self.projector_sleep,
                 'natural_light': self.natural_light,
