@@ -24,9 +24,11 @@ class SmartClassroomSimulation:
 
         # Sistem durumu
         self.occupancy = 0
-        self.lighting_level = 0   # 0, 30, 100 (%)
+        self.lighting_level = 0   # 0, 30, 60, 100 (%)
         self.hvac_on = False
         self.projector_on = False
+        self.projector_sleep = False  # Uyku modu (%15 guc)
+        self.natural_light = 0.0      # LDR sensor (0-1)
 
         # Güç değerleri (Watt) — rapordaki bileşenlerle uyumlu
         self.P_lighting_full = 400
@@ -37,6 +39,7 @@ class SmartClassroomSimulation:
         # Enerji takibi (kWh)
         self.energy_auto = 0.0
         self.energy_baseline = 0.0
+        self.cost_saved_tl_tariff = 0.0  # TR 3 zamanli tarifeli kazanc
 
         # Günlük enerji takibi (kWh) — index 0=Pzt ... 6=Paz
         self.daily_auto = [0.0] * 7
@@ -114,34 +117,71 @@ class SmartClassroomSimulation:
             self.humidity = 45 + self.occupancy * 0.3 + random.uniform(-1.0, 1.0)
             self.humidity = round(max(20.0, min(90.0, self.humidity)), 1)
 
+            # --- Doğal Aydınlatma (LDR Sensör Simülasyonu) ---
+            # Gündüz dışarısı parlaksa iç aydınlatma kademeli kısılır.
+            # Saat bazlı doğal ışık yoğunluğu (0-1 arası): 06-18 saatlerinde parabol
+            if 6 <= hour <= 18:
+                # Öğleyin (12:00) zirve, sabah/akşam azalır
+                natural_light = max(0.0, 1.0 - abs(hour + minute_in_hour/60 - 12) / 6.0)
+            else:
+                natural_light = 0.0
+            # %20 hava şartı varyansı (bulutluluk simülasyonu)
+            natural_light *= random.uniform(0.7, 1.0)
+            self.natural_light = round(natural_light, 2)
+
+            # --- Gece / Hafta Sonu Tam Kapatma ---
+            # 22:00-06:00 arası ve hafta sonu (Cmt/Paz) — etüt modu hariç tüm yükler kapali
+            is_night = hour >= 22 or hour < 6
+            is_weekend = day >= 5
+            force_off = (is_night or is_weekend) and self.occupancy == 0
+
             # --- Hiyerarşik Kontrol Algoritması ---
             minutes_since_motion = self.current_minute - self.last_motion_minute
 
-            if self.occupancy > 0 or (self.motion_detected and minutes_since_motion < self.motion_timeout):
-                self.lighting_level = 100
+            if force_off:
+                # Gece veya hafta sonu, kimse yok -> hepsi kapali
+                self.lighting_level = 0
+                self.hvac_on = False
+                self.projector_on = False
+                self.projector_sleep = False
+            elif self.occupancy > 0 or (self.motion_detected and minutes_since_motion < self.motion_timeout):
+                # Aktif kullanim - dogal isiga gore aydinlatma seviyesi
+                if natural_light >= 0.7:
+                    self.lighting_level = 30   # Cok parlak gun -> dim yeterli
+                elif natural_light >= 0.4:
+                    self.lighting_level = 60   # Orta gun -> orta aydinlatma
+                else:
+                    self.lighting_level = 100  # Karanlik / gece dersi -> tam
                 self.hvac_on = not (20.0 <= self.temperature <= 25.0)
                 self.projector_on = in_class
+                self.projector_sleep = False
             elif minutes_since_motion >= self.power_timeout:
                 # 15. dakika — tamamen kapat
                 self.lighting_level = 0
                 self.hvac_on = False
                 self.projector_on = False
+                self.projector_sleep = False
             elif minutes_since_motion >= self.motion_timeout:
-                # 10. dakika — %30 dim
+                # 10. dakika — %30 dim + projektor uyku
                 self.lighting_level = 30
                 self.hvac_on = False
+                self.projector_sleep = self.projector_on  # Uyku modu
                 self.projector_on = False
 
             # --- Anlık Güç Hesabı (Otomasyonlu) ---
             P_auto = 0
             if self.lighting_level == 100:
                 P_auto += self.P_lighting_full
+            elif self.lighting_level == 60:
+                P_auto += int(self.P_lighting_full * 0.6)
             elif self.lighting_level == 30:
                 P_auto += self.P_lighting_dim
             if self.hvac_on:
                 P_auto += self.P_hvac
             if self.projector_on:
                 P_auto += self.P_projector
+            elif self.projector_sleep:
+                P_auto += int(self.P_projector * 0.15)  # Uyku modu = %15 güç
 
             # --- Baz Hat (Otomasyon Yok): Hft içi 07-21 saatleri arası her şey açık ---
             P_baseline = 0
@@ -155,6 +195,19 @@ class SmartClassroomSimulation:
             self.energy_baseline += e_base_min
             self.daily_auto[day] += e_auto_min
             self.daily_baseline[day] += e_base_min
+
+            # --- TR Tarifeli Maliyet (3 zamanlı: gunduz/puant/gece) ---
+            # 06-17 gunduz: 4.0 TL/kWh
+            # 17-22 puant:  6.0 TL/kWh (en pahali)
+            # 22-06 gece:   2.0 TL/kWh
+            if 6 <= hour < 17:
+                tariff = 4.0
+            elif 17 <= hour < 22:
+                tariff = 6.0
+            else:
+                tariff = 2.0
+            saved_min = e_base_min - e_auto_min
+            self.cost_saved_tl_tariff += saved_min * tariff
 
             # --- Geçmiş Kaydı (her 30 dakikada bir) ---
             if self.current_minute % 30 == 0:
@@ -260,6 +313,8 @@ class SmartClassroomSimulation:
                 'lighting_level': self.lighting_level,
                 'hvac_on': self.hvac_on,
                 'projector_on': self.projector_on,
+                'projector_sleep': self.projector_sleep,
+                'natural_light': self.natural_light,
                 'temperature': self.temperature,
                 'humidity': self.humidity,
                 'motion_detected': self.motion_detected,
@@ -269,6 +324,7 @@ class SmartClassroomSimulation:
                 'savings_pct': round(savings_pct, 1),
                 'carbon_saved_kg': round(carbon_saved_kg, 2),
                 'cost_saved_tl': round(cost_saved_tl, 2),
+                'cost_saved_tl_tariff': round(self.cost_saved_tl_tariff, 2),
                 'speed': self.speed,
                 'history': self.history[-200:],
                 'daily': daily,
